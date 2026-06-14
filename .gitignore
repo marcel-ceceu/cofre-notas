@@ -1,0 +1,19 @@
+node_modules
+dist
+dist-ssr
+*.local
+.vite
+
+# Rust / Tauri
+src-tauri/target
+
+# Chaves de assinatura do updater — NUNCA versionar
+*.key
+*.key.pub
+
+.DS_Store
+Thumbs.db
+
+.vscode/*
+!.vscode/extensions.json
+.idea

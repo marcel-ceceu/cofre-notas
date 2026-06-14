@@ -1,0 +1,131 @@
+@import "tailwindcss";
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  font-family:
+    ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue",
+    Arial, sans-serif;
+  background: #fafafa;
+  color: #18181b;
+}
+
+.md-body {
+  font-size: 15px;
+  line-height: 1.7;
+  color: #27272a;
+}
+.md-body > * + * {
+  margin-top: 1em;
+}
+.md-body h1 {
+  font-size: 1.75rem;
+  font-weight: 600;
+  margin-top: 1.6em;
+  line-height: 1.3;
+}
+.md-body h2 {
+  font-size: 1.4rem;
+  font-weight: 600;
+  margin-top: 1.5em;
+  line-height: 1.3;
+}
+.md-body h3 {
+  font-size: 1.15rem;
+  font-weight: 600;
+  margin-top: 1.3em;
+}
+.md-body h4,
+.md-body h5,
+.md-body h6 {
+  font-weight: 600;
+  margin-top: 1.2em;
+}
+.md-body p {
+  margin: 0;
+}
+.md-body a {
+  color: #2563eb;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.md-body a:hover {
+  color: #1d4ed8;
+}
+.md-body ul,
+.md-body ol {
+  padding-left: 1.5em;
+}
+.md-body ul {
+  list-style: disc;
+}
+.md-body ol {
+  list-style: decimal;
+}
+.md-body li + li {
+  margin-top: 0.25em;
+}
+.md-body li > p {
+  margin: 0;
+}
+.md-body input[type="checkbox"] {
+  margin-right: 0.4em;
+  transform: translateY(1px);
+}
+.md-body blockquote {
+  border-left: 3px solid #d4d4d8;
+  padding: 0.1em 0 0.1em 1em;
+  color: #52525b;
+  font-style: italic;
+}
+.md-body code {
+  background: #f4f4f5;
+  padding: 0.15em 0.35em;
+  border-radius: 4px;
+  font-size: 0.9em;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+.md-body pre {
+  background: #18181b;
+  color: #fafafa;
+  padding: 1em;
+  border-radius: 8px;
+  overflow-x: auto;
+  font-size: 0.875em;
+  line-height: 1.55;
+}
+.md-body pre code {
+  background: transparent;
+  padding: 0;
+  color: inherit;
+  font-size: inherit;
+}
+.md-body table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.92em;
+}
+.md-body th,
+.md-body td {
+  border: 1px solid #e4e4e7;
+  padding: 0.5em 0.75em;
+  text-align: left;
+}
+.md-body th {
+  background: #f4f4f5;
+  font-weight: 600;
+}
+.md-body hr {
+  border: 0;
+  border-top: 1px solid #e4e4e7;
+  margin: 2em 0;
+}
+.md-body img {
+  max-width: 100%;
+  border-radius: 6px;
+}
