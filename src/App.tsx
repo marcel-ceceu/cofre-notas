@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useVaultStore } from "./store/vaultStore";
 import { pickVaultDirectory, readVault } from "./lib/fileSystem";
 import {
@@ -12,6 +12,7 @@ import { NoteViewer } from "./components/NoteViewer";
 import { SortControl } from "./components/SortControl";
 import { SearchBox } from "./components/SearchBox";
 import { UpdateBanner } from "./components/UpdateBanner";
+import { ImportClaudeModal } from "./components/ImportClaudeModal";
 
 export default function App() {
   const notes = useVaultStore((s) => s.notes);
@@ -24,6 +25,7 @@ export default function App() {
   const setActivePath = useVaultStore((s) => s.setActivePath);
   const setLoading = useVaultStore((s) => s.setLoading);
   const setError = useVaultStore((s) => s.setError);
+  const [importOpen, setImportOpen] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -131,6 +133,13 @@ export default function App() {
           </div>
           <SearchBox />
           <SortControl />
+          <button
+            onClick={() => setImportOpen(true)}
+            className="w-full px-3 py-1.5 text-xs font-medium rounded-md border border-violet-200 bg-violet-50 text-violet-700 hover:bg-violet-100"
+            title="Importar conversas exportadas do Claude.ai (.zip) como notas .md"
+          >
+            ⬇ Importar conversas do Claude
+          </button>
           {error && (
             <p className="text-xs text-red-600 break-words">{error}</p>
           )}
@@ -148,6 +157,12 @@ export default function App() {
           <NoteViewer />
         </main>
       </div>
+      {importOpen && (
+        <ImportClaudeModal
+          onClose={() => setImportOpen(false)}
+          onImported={() => handleReloadVault()}
+        />
+      )}
     </div>
   );
 }

@@ -3,6 +3,7 @@ import { useVaultStore } from "../store/vaultStore";
 import { queryNotes } from "../lib/search";
 import { CopyResultsModal } from "./CopyResultsModal";
 import { SearchSettingsModal } from "./SearchSettingsModal";
+import { ConsolidateModal } from "./ConsolidateModal";
 
 export function SearchBox() {
   const setQuery = useVaultStore((s) => s.setQuery);
@@ -13,6 +14,7 @@ export function SearchBox() {
   const [local, setLocal] = useState("");
   const [copyOpen, setCopyOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [exportOpen, setExportOpen] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const filtered = useMemo(
@@ -117,6 +119,33 @@ export function SearchBox() {
 
           <button
             type="button"
+            onClick={() => setExportOpen(true)}
+            disabled={filtered.length === 0}
+            title="Exportar/consolidar os resultados filtrados em arquivos"
+            className="inline-flex items-center justify-center h-6 w-6 rounded text-zinc-400 hover:text-violet-600 hover:bg-violet-50 disabled:opacity-30 disabled:pointer-events-none"
+            aria-label="Exportar resultados da pesquisa"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 20 20"
+              fill="currentColor"
+              className="h-3.5 w-3.5"
+              aria-hidden
+            >
+              <path d="M3 4.5A1.5 1.5 0 014.5 3h3.379a1.5 1.5 0 011.06.44l1.122 1.12a1.5 1.5 0 001.06.44H15.5A1.5 1.5 0 0117 6.5v7A1.5 1.5 0 0115.5 15h-11A1.5 1.5 0 013 13.5v-9z" />
+              <path
+                d="M10 7.5v4m0 0l1.75-1.75M10 11.5L8.25 9.75"
+                stroke="white"
+                strokeWidth="1.2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                fill="none"
+              />
+            </svg>
+          </button>
+
+          <button
+            type="button"
             onClick={() => setCopyOpen(true)}
             disabled={filtered.length === 0}
             title="Copiar caminhos dos resultados filtrados"
@@ -142,6 +171,9 @@ export function SearchBox() {
       )}
       {settingsOpen && (
         <SearchSettingsModal onClose={() => setSettingsOpen(false)} />
+      )}
+      {exportOpen && (
+        <ConsolidateModal notes={filtered} onClose={() => setExportOpen(false)} />
       )}
     </div>
   );
