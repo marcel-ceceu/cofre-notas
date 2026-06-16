@@ -13,6 +13,7 @@ import { SortControl } from "./components/SortControl";
 import { SearchBox } from "./components/SearchBox";
 import { UpdateBanner } from "./components/UpdateBanner";
 import { ImportClaudeModal } from "./components/ImportClaudeModal";
+import { useSidebarWidth } from "./lib/useSidebarWidth";
 
 export default function App() {
   const notes = useVaultStore((s) => s.notes);
@@ -26,6 +27,7 @@ export default function App() {
   const setLoading = useVaultStore((s) => s.setLoading);
   const setError = useVaultStore((s) => s.setError);
   const [importOpen, setImportOpen] = useState(false);
+  const { width: sidebarWidth, onHandleMouseDown } = useSidebarWidth();
 
   useEffect(() => {
     let cancelled = false;
@@ -112,7 +114,10 @@ export default function App() {
     <div className="flex flex-col h-screen w-screen overflow-hidden bg-zinc-50">
       <UpdateBanner />
       <div className="flex flex-1 overflow-hidden">
-        <aside className="w-72 shrink-0 border-r border-zinc-200 bg-white flex flex-col">
+        <aside
+          style={{ width: sidebarWidth }}
+          className="shrink-0 border-r border-zinc-200 bg-white flex flex-col"
+        >
         <div className="p-3 border-b border-zinc-200 space-y-2">
           <div className="flex gap-2">
             <button
@@ -152,6 +157,12 @@ export default function App() {
 
         <NoteList />
       </aside>
+
+        <div
+          onMouseDown={onHandleMouseDown}
+          className="w-1 shrink-0 cursor-col-resize bg-transparent transition-colors hover:bg-violet-300 active:bg-violet-400"
+          title="Arraste para ajustar a largura"
+        />
 
         <main className="flex-1 overflow-y-auto bg-white">
           <NoteViewer />

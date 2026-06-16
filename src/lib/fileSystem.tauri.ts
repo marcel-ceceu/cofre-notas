@@ -1,6 +1,7 @@
 import { open } from "@tauri-apps/plugin-dialog";
 import { readDir, readTextFile, stat } from "@tauri-apps/plugin-fs";
 import type { Note } from "./fileSystem";
+import { parseCreatedAt } from "./noteDates";
 
 export type TauriDirHandle = { kind: "tauri"; path: string };
 
@@ -65,11 +66,13 @@ async function walk(
           stat(absChild),
         ]);
         const mtime = meta.mtime ? new Date(meta.mtime).getTime() : Date.now();
+        const name = entry.name.replace(/\.md$/i, "");
         out.push({
           path: relChild,
-          name: entry.name.replace(/\.md$/i, ""),
+          name,
           content,
           lastModified: mtime,
+          createdAt: parseCreatedAt(content, name, mtime),
         });
         console.log(`[cofre]   + ${relChild} (${content.length} chars)`);
       } catch (e) {

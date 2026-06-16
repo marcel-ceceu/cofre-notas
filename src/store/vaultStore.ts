@@ -4,10 +4,13 @@ import { DEFAULT_SEARCH_PREFS, type SearchPrefs } from "../lib/search";
 
 export type SortKey =
   | "relevance"
+  | "occurrences"
+  | "conv-desc"
+  | "conv-asc"
+  | "import-desc"
+  | "import-asc"
   | "name-asc"
-  | "name-desc"
-  | "date-desc"
-  | "date-asc";
+  | "name-desc";
 
 const PREFS_KEY = "cofre-notas:searchPrefs";
 const SORT_KEY = "cofre-notas:sortKey";
@@ -37,9 +40,14 @@ function saveSearchPrefs(prefs: SearchPrefs): void {
 
 function loadSortKey(): SortKey {
   try {
-    return (localStorage.getItem(SORT_KEY) as SortKey | null) ?? "date-desc";
+    const raw = localStorage.getItem(SORT_KEY);
+    if (!raw) return "import-desc";
+    // migração dos valores antigos (eram por data de importação)
+    if (raw === "date-desc") return "import-desc";
+    if (raw === "date-asc") return "import-asc";
+    return raw as SortKey;
   } catch {
-    return "date-desc";
+    return "import-desc";
   }
 }
 

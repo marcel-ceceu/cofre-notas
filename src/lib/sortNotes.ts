@@ -12,12 +12,17 @@ export function sortNotes(notes: Note[], key: SortKey): Note[] {
       return copy.sort((a, b) =>
         b.name.localeCompare(a.name, "pt-BR", { sensitivity: "base" })
       );
-    case "date-asc":
+    case "import-asc":
       return copy.sort((a, b) => a.lastModified - b.lastModified);
-    // "relevance" sem termo de busca cai aqui: ordena por data desc (a relevância
-    // de fato é resolvida em queryNotes quando há consulta ativa).
-    case "date-desc":
+    case "conv-desc":
+      return copy.sort((a, b) => b.createdAt - a.createdAt);
+    case "conv-asc":
+      return copy.sort((a, b) => a.createdAt - b.createdAt);
+    // "relevance"/"occurrences" sem termo de busca caem aqui: ordena por data de
+    // importação desc (a ordenação real é resolvida em queryNotes com termo ativo).
+    case "import-desc":
     case "relevance":
+    case "occurrences":
     default:
       return copy.sort((a, b) => b.lastModified - a.lastModified);
   }

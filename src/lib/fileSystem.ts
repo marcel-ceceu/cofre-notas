@@ -4,12 +4,16 @@ import {
   readVaultTauri,
   type TauriDirHandle,
 } from "./fileSystem.tauri";
+import { parseCreatedAt } from "./noteDates";
 
 export type Note = {
   path: string;
   name: string;
   content: string;
+  /** Data de IMPORTAÇÃO (mtime do .md). */
   lastModified: number;
+  /** Data ORIGINAL da conversa (frontmatter `created:` ou data do nome). */
+  createdAt: number;
 };
 
 /** Handle opaco — varia conforme o runtime (web: FileSystemDirectoryHandle; Tauri: { path }). */
@@ -69,11 +73,13 @@ async function walkWeb(
       const fileHandle = entry as FileSystemFileHandle;
       const file = await fileHandle.getFile();
       const content = await file.text();
+      const name = entry.name.replace(/\.md$/i, "");
       out.push({
         path: relPath,
-        name: entry.name.replace(/\.md$/i, ""),
+        name,
         content,
         lastModified: file.lastModified,
+        createdAt: parseCreatedAt(content, name, file.lastModified),
       });
     }
   }

@@ -143,9 +143,59 @@ export function relevanceScore(
   return score;
 }
 
+/** Total de ocorrências dos termos no título + corpo (case-insensitive). */
+export function countOccurrences(note: Note, terms: string[]): number {
+  if (terms.length === 0) return 0;
+  const hay = `${note.name}\n${note.content}`.toLowerCase();
+  let total = 0;
+  for (const t of terms) {
+    if (!t) continue;
+    let i = hay.indexOf(t);
+    while (i !== -1) {
+      total++;
+      i = hay.indexOf(t, i + t.length);
+    }
+  }
+  return total;
+}
+
+const FRONTMATTER_RE = /^---\r?\n[\s\S]*?\r?\n---\r?\n?/;
+
 /**
- * Pipeline completo e único — filtra, ordena (relevância quando pedido) e aplica o limite.
- * Mesma lógica em todos os pontos que consultam notas.
+ * Trecho de contexto (~2*radius chars) ao redor da 1ª ocorrência no corpo,
+ * com "…" nas bordas. Remove o frontmatter e colapsa espaços. Se casar só no
+ * título, devolve o início do corpo.
+ */
+export function buildSnippet(
+  content: string,
+  terms: string[],
+  radius = 70
+): string {
+  const body = content.replace(FRONTMATTER_RE, "").replace(/\s+/g, " ").trim();
+  const head = (s: string) =>
+    s.slice(0, radius * 2).trim() + (s.length > radius * 2 ? "…" : "");
+  if (terms.length === 0) return head(body);
+
+  const lower = body.toLowerCase();
+  let pos = -1;
+  for (const t of terms) {
+    if (!t) continue;
+    const i = lower.indexOf(t);
+    if (i !== -1 && (pos === -1 || i < pos)) pos = i;
+  }
+  if (pos === -1) return head(body); // casou só no título
+
+  const start = Math.max(0, pos - radius);
+  const end = Math.min(body.length, pos + radius);
+  let snip = body.slice(start, end).trim();
+  if (start > 0) snip = "…" + snip;
+  if (end < body.length) snip = snip + "…";
+  return snip;
+}
+
+/**
+ * Pipeline completo e único — filtra, ordena (relevância/ocorrências quando há
+ * termo) e aplica o limite. Mesma lógica em todos os pontos que consultam notas.
  */
 export function queryNotes(
   notes: Note[],
@@ -163,6 +213,15 @@ export function queryNotes(
     ordered = [...matched]
       .map((n) => ({ n, s: relevanceScore(n, terms, prefs.includeBody) }))
       .sort((a, b) => b.s - a.s || b.n.lastModified - a.n.lastModified)
+      .map((x) => x.n);
+  } else if (sortKey === "occurrences" && terms.length) {
+    ordered = [...matched]
+      .map((n) => ({
+        n,
+        c: countOccurrences(n, terms),
+        s: relevanceScore(n, terms, prefs.includeBody),
+      }))
+      .sort((a, b) => b.c - a.c || b.s - a.s || b.n.lastModified - a.n.lastModified)
       .map((x) => x.n);
   } else {
     ordered = sortNotes(matched, sortKey);

@@ -2,8 +2,11 @@ import { useVaultStore, type SortKey } from "../store/vaultStore";
 
 const OPTIONS: { value: SortKey; label: string }[] = [
   { value: "relevance", label: "Relevância" },
-  { value: "date-desc", label: "Mais recentes" },
-  { value: "date-asc", label: "Mais antigas" },
+  { value: "occurrences", label: "Mais ocorrências" },
+  { value: "conv-desc", label: "Conversa (recentes)" },
+  { value: "conv-asc", label: "Conversa (antigas)" },
+  { value: "import-desc", label: "Importação (recentes)" },
+  { value: "import-asc", label: "Importação (antigas)" },
   { value: "name-asc", label: "Nome (A→Z)" },
   { value: "name-desc", label: "Nome (Z→A)" },
 ];
