@@ -32,6 +32,18 @@ export const DEFAULT_SEARCH_PREFS: SearchPrefs = {
 /** Caractere "de palavra" (letra ou dígito Unicode). Reutilizado — sem flag global, sem estado. */
 const WORD_CHAR = /[\p{L}\p{N}]/u;
 
+/** Campo onde um termo deve ser procurado. */
+type TermField = "any" | "title" | "body";
+
+/** Um termo da consulta, já com operadores resolvidos. */
+type QueryTerm = { value: string; field: TermField; negate: boolean };
+
+/**
+ * Consulta estruturada: lista de GRUPOS unidos por OU; dentro do grupo os
+ * termos são unidos por E (com exclusão via `negate`).
+ */
+export type ParsedQuery = QueryTerm[][];
+
 /** Extrai termos: frases entre aspas ou palavras soltas (estilo Google). */
 export function parseSearchQuery(query: string): string[] {
   const terms: string[] = [];
@@ -44,34 +56,95 @@ export function parseSearchQuery(query: string): string[] {
   return terms;
 }
 
+// token: [-] [title:|body:] ("frase" | palavra)
+const TOKEN_RE = /(-)?(?:(title|body):)?(?:"([^"]*)"|(\S+))/gi;
+
 /**
- * Termos a casar/realçar conforme o modo ativo.
- * - tokens: divide em palavras (respeitando "frases entre aspas").
- * - substring: o trecho inteiro como termo único.
+ * Interpreta a consulta com operadores (apenas no modo "tokens"):
+ * - espaço = E   |   OR / OU (MAIÚSCULO) = OU   |   -termo = excluir
+ * - "frase exata"   |   title:termo / body:termo (campo específico)
+ * No modo "substring" a consulta inteira é um termo literal único.
  */
-export function searchTerms(query: string, mode: SearchMode): string[] {
+export function parseQuery(query: string, mode: SearchMode): ParsedQuery {
   const trimmed = query.trim();
   if (!trimmed) return [];
-  if (mode === "substring") return [trimmed.toLowerCase()];
-  return parseSearchQuery(trimmed);
+  if (mode === "substring") {
+    return [[{ value: trimmed.toLowerCase(), field: "any", negate: false }]];
+  }
+
+  const groups: QueryTerm[][] = [];
+  let current: QueryTerm[] = [];
+  let m: RegExpExecArray | null;
+  TOKEN_RE.lastIndex = 0;
+  while ((m = TOKEN_RE.exec(trimmed)) !== null) {
+    const negate = !!m[1];
+    const fieldRaw = m[2]?.toLowerCase();
+    const quoted = m[3];
+    const bare = m[4];
+
+    // operador OU: token cru, MAIÚSCULO, sem -, sem campo, sem aspas
+    if (!negate && !fieldRaw && quoted === undefined && (bare === "OR" || bare === "OU")) {
+      if (current.length) {
+        groups.push(current);
+        current = [];
+      }
+      continue;
+    }
+
+    const value = (quoted !== undefined ? quoted : bare ?? "").trim().toLowerCase();
+    if (!value) continue;
+    const field: TermField = fieldRaw === "title" ? "title" : fieldRaw === "body" ? "body" : "any";
+    current.push({ value, field, negate });
+  }
+  if (current.length) groups.push(current);
+  return groups;
 }
 
-function fieldsOf(note: Note, includeBody: boolean): string[] {
-  return includeBody ? [note.name, note.content] : [note.name];
+/** Termos POSITIVOS (não excluídos) — para realce, contagem, snippet e relevância. */
+export function positiveTermsOf(pq: ParsedQuery): string[] {
+  const set = new Set<string>();
+  for (const g of pq) for (const t of g) if (!t.negate) set.add(t.value);
+  return [...set];
 }
 
 /**
- * Casa a nota: cada termo precisa aparecer em pelo menos um campo (E entre termos, OU entre campos).
- * No modo substring há um único termo, então vira "o trecho aparece em algum campo".
+ * Termos a casar/realçar conforme o modo ativo (apenas os positivos).
  */
-export function noteMatches(
-  note: Note,
-  terms: string[],
+export function searchTerms(query: string, mode: SearchMode): string[] {
+  return positiveTermsOf(parseQuery(query, mode));
+}
+
+function groupMatches(
+  group: QueryTerm[],
+  title: string,
+  body: string,
   includeBody: boolean
 ): boolean {
-  if (terms.length === 0) return true;
-  const fields = fieldsOf(note, includeBody).map((f) => f.toLowerCase());
-  return terms.every((t) => fields.some((f) => f.includes(t)));
+  for (const t of group) {
+    const hay =
+      t.field === "title"
+        ? title
+        : t.field === "body"
+          ? body
+          : includeBody
+            ? `${title}\n${body}`
+            : title;
+    const present = hay.includes(t.value);
+    if (t.negate ? present : !present) return false;
+  }
+  return true;
+}
+
+/** Casa a nota contra a consulta estruturada (OU entre grupos, E dentro do grupo). */
+export function noteMatchesQuery(
+  note: Note,
+  pq: ParsedQuery,
+  includeBody: boolean
+): boolean {
+  if (pq.length === 0) return true;
+  const title = note.name.toLowerCase();
+  const body = note.content.toLowerCase();
+  return pq.some((g) => groupMatches(g, title, body, includeBody));
 }
 
 /** Apenas as notas que casam — sem ordenar, sem limitar (usado para contagem). */
@@ -80,9 +153,9 @@ export function filterNotes(
   query: string,
   prefs: SearchPrefs
 ): Note[] {
-  const terms = searchTerms(query, prefs.searchMode);
-  if (terms.length === 0) return notes;
-  return notes.filter((n) => noteMatches(n, terms, prefs.includeBody));
+  const pq = parseQuery(query, prefs.searchMode);
+  if (pq.length === 0) return notes;
+  return notes.filter((n) => noteMatchesQuery(n, pq, prefs.includeBody));
 }
 
 /** `term` ocorre no início de alguma palavra de `text`? */
@@ -203,9 +276,10 @@ export function queryNotes(
   prefs: SearchPrefs,
   sortKey: SortKey
 ): Note[] {
-  const terms = searchTerms(query, prefs.searchMode);
-  const matched = terms.length
-    ? notes.filter((n) => noteMatches(n, terms, prefs.includeBody))
+  const pq = parseQuery(query, prefs.searchMode);
+  const terms = positiveTermsOf(pq);
+  const matched = pq.length
+    ? notes.filter((n) => noteMatchesQuery(n, pq, prefs.includeBody))
     : notes;
 
   let ordered: Note[];

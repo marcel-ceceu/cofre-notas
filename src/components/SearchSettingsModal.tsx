@@ -148,6 +148,38 @@ export function SearchSettingsModal({ onClose }: Props) {
                 Texto contínuo
               </Segment>
             </div>
+
+            {prefs.searchMode === "tokens" && (
+              <div className="rounded-md border border-zinc-200 bg-zinc-50 p-2.5 text-[11px] leading-relaxed text-zinc-600">
+                <span className="font-medium text-zinc-700">Operadores:</span>
+                <ul className="mt-1 space-y-0.5">
+                  <li>
+                    <code className="text-violet-700">termo termo</code> = E (ambos)
+                  </li>
+                  <li>
+                    <code className="text-violet-700">OR</code> /{" "}
+                    <code className="text-violet-700">OU</code> (maiúsculo) = OU
+                  </li>
+                  <li>
+                    <code className="text-violet-700">-termo</code> = excluir
+                  </li>
+                  <li>
+                    <code className="text-violet-700">"frase exata"</code> = trecho
+                    literal
+                  </li>
+                  <li>
+                    <code className="text-violet-700">title:termo</code> /{" "}
+                    <code className="text-violet-700">body:termo</code> = só no
+                    título / corpo
+                  </li>
+                </ul>
+                <p className="mt-1.5 text-zinc-500">
+                  Ex.: <code>(erpnv3 OU nfe)</code> vira{" "}
+                  <code>erpnv3 OU nfe</code> · <code>nota fiscal -teste</code> ·{" "}
+                  <code>title:erpnv3 retenção</code>
+                </p>
+              </div>
+            )}
           </div>
 
           {/* Campos auxiliares */}
