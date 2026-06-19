@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { open } from "@tauri-apps/plugin-dialog";
 import type { Note } from "../lib/fileSystem";
 import { useVaultStore } from "../store/vaultStore";
@@ -10,6 +10,7 @@ import {
   runLlms,
   type ExportProgress,
 } from "../lib/export/runExport";
+import { resolvePastedPaths } from "../lib/export/resolvePaths";
 import {
   loadAiPrefs,
   saveAiPrefs,
@@ -25,6 +26,7 @@ type Props = {
 
 export function ConsolidateModal({ notes, onClose }: Props) {
   const dirHandle = useVaultStore((s) => s.dirHandle);
+  const allNotes = useVaultStore((s) => s.notes);
   const vaultLabel =
     dirHandle && (dirHandle as TauriDirHandle).kind === "tauri"
       ? (dirHandle as TauriDirHandle).path
@@ -40,6 +42,15 @@ export function ConsolidateModal({ notes, onClose }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [aiPrefs, setAiPrefs] = useState<AiPrefs>(DEFAULT_AI_PREFS);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [source, setSource] = useState<"search" | "paste">("search");
+  const [pasteText, setPasteText] = useState("");
+
+  const resolved = useMemo(
+    () => resolvePastedPaths(pasteText, allNotes),
+    [pasteText, allNotes]
+  );
+  // O que será exportado: resultados da busca OU a lista colada (resolvida).
+  const targetNotes = source === "search" ? notes : resolved.matched;
 
   useEffect(() => {
     if (!isTauriRuntime()) return;
@@ -79,7 +90,7 @@ export function ConsolidateModal({ notes, onClose }: Props) {
     setRunning(mode);
     setError(null);
     setDoneMsg(null);
-    setProgress({ phase: "Iniciando…", done: 0, total: notes.length });
+    setProgress({ phase: "Iniciando…", done: 0, total: targetNotes.length });
     try {
       setDoneMsg(await fn());
     } catch (e) {
@@ -91,13 +102,13 @@ export function ConsolidateModal({ notes, onClose }: Props) {
 
   const doCopy = () =>
     wrap("copy", async () => {
-      const r = await runCopyFiles(notes, destDir!, setProgress);
+      const r = await runCopyFiles(targetNotes, destDir!, setProgress);
       return `${r.copied}/${r.total} arquivo(s) copiado(s) para "${r.subfolder}".`;
     });
 
   const doConsolidate = () =>
     wrap("merge", async () => {
-      const r = await runConsolidate(notes, destDir!, vaultLabel, setProgress);
+      const r = await runConsolidate(targetNotes, destDir!, vaultLabel, setProgress);
       return `Consolidado gravado: ${r.file} (${r.count} conversas).`;
     });
 
@@ -105,7 +116,7 @@ export function ConsolidateModal({ notes, onClose }: Props) {
     if (!requireKey()) return;
     return wrap("merge-ai", async () => {
       const r = await runConsolidateAI(
-        notes,
+        targetNotes,
         destDir!,
         vaultLabel,
         aiPrefs.apiKey,
@@ -123,7 +134,7 @@ export function ConsolidateModal({ notes, onClose }: Props) {
     if (!requireKey()) return;
     return wrap("llms", async () => {
       const r = await runLlms(
-        notes,
+        targetNotes,
         destDir!,
         aiPrefs.apiKey,
         aiPrefs.model,
@@ -141,7 +152,7 @@ export function ConsolidateModal({ notes, onClose }: Props) {
     progress && progress.total > 0
       ? Math.round((progress.done / progress.total) * 100)
       : null;
-  const canRun = !!destDir && notes.length > 0 && !busy;
+  const canRun = !!destDir && targetNotes.length > 0 && !busy;
 
   return (
     <div
@@ -177,17 +188,59 @@ export function ConsolidateModal({ notes, onClose }: Props) {
           </div>
         ) : (
           <div className="p-4 space-y-4 text-sm">
-            <div className="flex items-center justify-between">
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="font-medium text-zinc-800">Fonte</span>
+                <button
+                  type="button"
+                  onClick={() => setSettingsOpen(true)}
+                  className="rounded border border-zinc-300 px-2 py-1 text-xs text-zinc-600 hover:bg-zinc-50"
+                >
+                  ⚙ Config. IA{aiPrefs.apiKey ? "" : " (sem chave)"}
+                </button>
+              </div>
+
+              <div className="flex gap-1 rounded-lg bg-zinc-100 p-1">
+                <SourceSeg
+                  active={source === "search"}
+                  onClick={() => setSource("search")}
+                >
+                  Resultados da busca ({notes.length})
+                </SourceSeg>
+                <SourceSeg
+                  active={source === "paste"}
+                  onClick={() => setSource("paste")}
+                >
+                  Colar caminhos
+                </SourceSeg>
+              </div>
+
+              {source === "paste" && (
+                <div className="space-y-1">
+                  <textarea
+                    value={pasteText}
+                    onChange={(e) => setPasteText(e.target.value)}
+                    rows={5}
+                    placeholder={
+                      "Cole um caminho/arquivo por linha, ex.:\n2026-06-17-Diagnostico.md\n2026-06-16-Analise.md"
+                    }
+                    className="w-full resize-none rounded border border-zinc-300 bg-white p-2 text-xs font-mono text-zinc-800 focus:outline-none focus:ring-1 focus:ring-violet-400"
+                  />
+                  <p className="text-[11px] text-zinc-500">
+                    {resolved.matched.length} encontrada(s)
+                    {resolved.notFound.length > 0 && (
+                      <span className="text-amber-600">
+                        {" "}
+                        · {resolved.notFound.length} não encontrada(s)
+                      </span>
+                    )}
+                  </p>
+                </div>
+              )}
+
               <p className="text-xs text-zinc-600">
-                <strong>{notes.length}</strong> nota(s) da busca atual.
+                Exportando <strong>{targetNotes.length}</strong> nota(s).
               </p>
-              <button
-                type="button"
-                onClick={() => setSettingsOpen(true)}
-                className="rounded border border-zinc-300 px-2 py-1 text-xs text-zinc-600 hover:bg-zinc-50"
-              >
-                ⚙ Config. IA{aiPrefs.apiKey ? "" : " (sem chave)"}
-              </button>
             </div>
 
             <div className="space-y-1.5">
@@ -299,6 +352,31 @@ export function ConsolidateModal({ notes, onClose }: Props) {
         />
       )}
     </div>
+  );
+}
+
+function SourceSeg({
+  active,
+  onClick,
+  children,
+}: {
+  active: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={active}
+      className={`flex-1 px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${
+        active
+          ? "bg-violet-600 text-white shadow-sm"
+          : "text-zinc-600 hover:bg-zinc-100"
+      }`}
+    >
+      {children}
+    </button>
   );
 }
 
