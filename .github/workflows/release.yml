@@ -18,9 +18,17 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
+          cache: npm
 
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
+
+      # Cacheia o registry do cargo + src-tauri/target -> builds seguintes
+      # caem de ~8 min para ~2-4 min (o 1o build ainda popula o cache).
+      - name: Cache Rust
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: "src-tauri"
 
       - name: Instalar dependências
         run: npm ci
