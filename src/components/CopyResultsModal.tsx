@@ -1,27 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { Note } from "../lib/fileSystem";
-
-type LinkStyle = "none" | "wiki" | "markdown";
-type ListPrefix = "none" | "bullet" | "number";
-
-function formatResults(
-  notes: Note[],
-  showPath: boolean,
-  linkStyle: LinkStyle,
-  listPrefix: ListPrefix
-): string {
-  return notes
-    .map((n, i) => {
-      const display = showPath ? n.path : n.name;
-      let line = display;
-      if (linkStyle === "wiki") line = `[[${display}]]`;
-      else if (linkStyle === "markdown") line = `[${display}](${n.path})`;
-      if (listPrefix === "bullet") line = `- ${line}`;
-      else if (listPrefix === "number") line = `${i + 1}. ${line}`;
-      return line;
-    })
-    .join("\n");
-}
+import {
+  formatResults,
+  copyToClipboard,
+  type LinkStyle,
+  type ListPrefix,
+} from "../lib/copyResults";
 
 type Props = {
   notes: Note[];
@@ -53,16 +37,9 @@ export function CopyResultsModal({ notes, onClose }: Props) {
   }, [onClose]);
 
   async function handleCopy() {
-    try {
-      await navigator.clipboard.writeText(text);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    } catch {
-      textareaRef.current?.select();
-      document.execCommand("copy");
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    }
+    await copyToClipboard(text);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
   }
 
   return (
