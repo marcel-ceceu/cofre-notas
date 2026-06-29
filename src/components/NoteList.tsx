@@ -8,6 +8,9 @@ import {
 } from "../lib/search";
 import { highlight } from "../lib/highlight";
 import { formatResults, copyToClipboard } from "../lib/copyResults";
+import { runCopyFiles } from "../lib/export/runExport";
+import { DEFAULT_EXPORT_DEST_ABS } from "../lib/export/dest";
+import { isTauriRuntime } from "../lib/fileSystem.tauri";
 import { ResultContextMenu } from "./ResultContextMenu";
 
 function formatDate(ms: number): string {
@@ -26,6 +29,8 @@ export function NoteList() {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [anchor, setAnchor] = useState<string | null>(null);
   const [menu, setMenu] = useState<{ x: number; y: number } | null>(null);
+  const [exportBusy, setExportBusy] = useState(false);
+  const [exportMsg, setExportMsg] = useState<string | null>(null);
 
   const visible = useMemo(
     () => queryNotes(notes, query, prefs, sortKey),
@@ -104,6 +109,27 @@ export function NoteList() {
     await copyToClipboard(formatResults(ordered, true, "none", "none"));
   }
 
+  async function quickExportSelected() {
+    const ordered = rows
+      .filter((r) => selected.has(r.note.path))
+      .map((r) => r.note);
+    if (!isTauriRuntime() || !ordered.length || exportBusy) return;
+    setExportBusy(true);
+    setExportMsg(null);
+    try {
+      const r = await runCopyFiles(ordered, DEFAULT_EXPORT_DEST_ABS);
+      setExportMsg(
+        `${r.copied}/${r.total} em ${DEFAULT_EXPORT_DEST_ABS}\\${r.subfolder}`
+      );
+      setSelected(new Set());
+      setAnchor(null);
+    } catch (e) {
+      setExportMsg((e as Error).message ?? String(e));
+    } finally {
+      setExportBusy(false);
+    }
+  }
+
   if (!notes.length && !loading) {
     return (
       <p className="p-4 text-xs text-zinc-500">
@@ -123,20 +149,36 @@ export function NoteList() {
   return (
     <>
       {selected.size > 0 && (
-        <div className="flex items-center justify-between border-b border-violet-200 bg-violet-50 px-3 py-1 text-[11px] text-violet-700">
-          <span>
-            {selected.size} selecionada{selected.size > 1 ? "s" : ""}
-          </span>
-          <button
-            type="button"
-            onClick={() => {
-              setSelected(new Set());
-              setAnchor(null);
-            }}
-            className="hover:underline"
-          >
-            limpar
-          </button>
+        <div className="border-b border-violet-200 bg-violet-50 px-3 py-1.5 text-[11px] text-violet-700 space-y-1">
+          <div className="flex items-center justify-between">
+            <span>
+              {selected.size} selecionada{selected.size > 1 ? "s" : ""}
+            </span>
+            <button
+              type="button"
+              onClick={() => {
+                setSelected(new Set());
+                setAnchor(null);
+                setExportMsg(null);
+              }}
+              className="hover:underline"
+            >
+              limpar
+            </button>
+          </div>
+          {isTauriRuntime() && (
+            <button
+              type="button"
+              disabled={exportBusy}
+              onClick={() => void quickExportSelected()}
+              className="w-full rounded border border-violet-300 bg-white px-2 py-1 text-xs font-semibold text-violet-800 hover:bg-violet-50 disabled:opacity-50"
+            >
+              {exportBusy ? "A exportar…" : "Exportar rápido (copiar arquivos)"}
+            </button>
+          )}
+          {exportMsg && (
+            <p className="text-[10px] leading-snug text-violet-600 break-words">{exportMsg}</p>
+          )}
         </div>
       )}
 

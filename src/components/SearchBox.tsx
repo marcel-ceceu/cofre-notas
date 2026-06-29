@@ -4,6 +4,9 @@ import { queryNotes } from "../lib/search";
 import { CopyResultsModal } from "./CopyResultsModal";
 import { SearchSettingsModal } from "./SearchSettingsModal";
 import { ConsolidateModal } from "./ConsolidateModal";
+import { runCopyFiles } from "../lib/export/runExport";
+import { DEFAULT_EXPORT_DEST_ABS } from "../lib/export/dest";
+import { isTauriRuntime } from "../lib/fileSystem.tauri";
 
 export function SearchBox() {
   const setQuery = useVaultStore((s) => s.setQuery);
@@ -15,6 +18,8 @@ export function SearchBox() {
   const [copyOpen, setCopyOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [exportOpen, setExportOpen] = useState(false);
+  const [quickBusy, setQuickBusy] = useState(false);
+  const [quickMsg, setQuickMsg] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const filtered = useMemo(
@@ -67,6 +72,22 @@ export function SearchBox() {
 
   const modeHint =
     prefs.searchMode === "tokens" ? "palavras soltas" : "texto contínuo";
+
+  async function quickExportAll() {
+    if (!isTauriRuntime() || filtered.length === 0 || quickBusy) return;
+    setQuickBusy(true);
+    setQuickMsg(null);
+    try {
+      const r = await runCopyFiles(filtered, DEFAULT_EXPORT_DEST_ABS);
+      setQuickMsg(
+        `${r.copied}/${r.total} arquivo(s) em ${DEFAULT_EXPORT_DEST_ABS}\\${r.subfolder}`
+      );
+    } catch (e) {
+      setQuickMsg((e as Error).message ?? String(e));
+    } finally {
+      setQuickBusy(false);
+    }
+  }
 
   return (
     <div className="space-y-1">
@@ -165,6 +186,25 @@ export function SearchBox() {
           </button>
         </div>
       </div>
+
+      {query.trim() && filtered.length > 0 && isTauriRuntime() && (
+        <div className="space-y-1 pt-1">
+          <button
+            type="button"
+            disabled={quickBusy}
+            onClick={() => void quickExportAll()}
+            title={`Copiar ${filtered.length} resultado(s) para ${DEFAULT_EXPORT_DEST_ABS}`}
+            className="w-full rounded-md border border-violet-200 bg-violet-50 px-2 py-1.5 text-xs font-semibold text-violet-800 hover:bg-violet-100 disabled:opacity-50"
+          >
+            {quickBusy
+              ? "A exportar…"
+              : `Exportar rápido — todos pesquisados (${filtered.length})`}
+          </button>
+          {quickMsg && (
+            <p className="text-[10px] leading-snug text-zinc-500 break-words">{quickMsg}</p>
+          )}
+        </div>
+      )}
 
       {copyOpen && (
         <CopyResultsModal notes={filtered} onClose={() => setCopyOpen(false)} />

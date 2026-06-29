@@ -18,6 +18,7 @@ import {
   type AiPrefs,
 } from "../lib/export/aiPrefs";
 import { AiSettingsModal } from "./AiSettingsModal";
+import { DEFAULT_EXPORT_DEST_ABS } from "../lib/export/dest";
 
 type Props = {
   notes: Note[];
@@ -35,7 +36,9 @@ export function ConsolidateModal({ notes, onClose }: Props) {
           .pop() || "cofre"
       : "cofre";
 
-  const [destDir, setDestDir] = useState<string | null>(null);
+  const [destDir, setDestDir] = useState<string | null>(
+    isTauriRuntime() ? DEFAULT_EXPORT_DEST_ABS : null
+  );
   const [running, setRunning] = useState<string | null>(null);
   const [progress, setProgress] = useState<ExportProgress | null>(null);
   const [doneMsg, setDoneMsg] = useState<string | null>(null);
