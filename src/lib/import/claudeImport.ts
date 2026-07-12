@@ -90,6 +90,41 @@ export type ImportedNote = {
   content: string;
 };
 
+/**
+ * Lê `uuid:` e `updated:` do frontmatter de uma nota já gravada.
+ * Olha só o início do arquivo (frontmatter) para não casar com o corpo.
+ * Retorna null se não houver uuid.
+ */
+export function parseNoteMeta(
+  raw: string
+): { uuid: string; updated: string } | null {
+  const head = raw.slice(0, 600);
+  if (!head.startsWith("---")) return null;
+  const mU = head.match(/^uuid:\s*(\S+)/m);
+  if (!mU) return null;
+  const mUp = head.match(/^updated:\s*(\S+)/m);
+  return { uuid: mU[1], updated: mUp ? mUp[1] : "" };
+}
+
+/**
+ * Decide o nome de arquivo alvo de uma nota, SEM duplicar conversas:
+ * - se o uuid já existe na pasta → regrava no MESMO arquivo (mesmo que o
+ *   título/data tenham mudado entre exports);
+ * - senão usa baseName, caindo para uuidName se o nome já pertence a OUTRA
+ *   conversa (nunca sobrescreve arquivo alheio).
+ */
+export function chooseTargetName(
+  note: ImportedNote,
+  uuid: string,
+  existingByUuid: Map<string, { name: string; updated: string }>,
+  takenNames: Set<string>
+): { name: string; existed: boolean } {
+  const cur = uuid ? existingByUuid.get(uuid) : undefined;
+  if (cur) return { name: cur.name, existed: true };
+  const name = takenNames.has(note.baseName) ? note.uuidName : note.baseName;
+  return { name, existed: false };
+}
+
 /** Converte uma conversa em nota .md (frontmatter + turnos). null se ficar vazia. */
 export function conversationToMarkdown(c: ClaudeConversation): ImportedNote | null {
   const lines: string[] = [];

@@ -330,10 +330,13 @@ export function ImportClaudeModal({ onClose, onImported }: Props) {
 
             {result && (
               <div className="rounded border border-emerald-200 bg-emerald-50 p-3 text-xs text-emerald-800">
-                <p className="font-medium">Importação concluída.</p>
+                <p className="font-medium">Importação concluída (sem duplicatas).</p>
                 <p className="mt-1">
-                  {result.unique} conversa(s) única(s) · {result.written}{" "}
-                  nota(s) gravada(s)
+                  {result.unique} conversa(s) única(s) · {result.written} nova(s)
+                  {result.updated > 0 ? ` · ${result.updated} atualizada(s)` : ""}
+                  {result.unchanged > 0
+                    ? ` · ${result.unchanged} já estavam em dia`
+                    : ""}
                   {result.empty > 0 ? ` · ${result.empty} vazia(s)` : ""}
                 </p>
               </div>

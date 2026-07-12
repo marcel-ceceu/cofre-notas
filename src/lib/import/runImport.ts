@@ -16,6 +16,8 @@ import {
   parseConversations,
   dedupeByUuid,
   conversationToMarkdown,
+  parseNoteMeta,
+  chooseTargetName,
   type ClaudeConversation,
 } from "./claudeImport";
 import { removeCortesias, prepareCortesias } from "./cortesias";
@@ -25,9 +27,62 @@ export type ImportProgress = { phase: string; done: number; total: number };
 export type ImportResult = {
   read: number;
   unique: number;
+  /** notas NOVAS gravadas */
   written: number;
+  /** notas existentes regravadas (mesma conversa, versão mais nova) */
+  updated: number;
+  /** notas puladas: a mesma versão já estava gravada */
+  unchanged: number;
   empty: number;
 };
+
+/**
+ * Indexa as notas já existentes na pasta de saída pelo `uuid:` do frontmatter.
+ * É a base do anti-duplicata entre importações: mesmo que o título ou a data
+ * da conversa mudem entre exports, o uuid não muda.
+ * Havendo mais de um arquivo com o mesmo uuid (duplicatas antigas), fica o de
+ * `updated` mais recente como alvo.
+ */
+async function scanExistingNotes(
+  outDir: string,
+  onProgress?: (p: ImportProgress) => void
+): Promise<{
+  byUuid: Map<string, { name: string; updated: string }>;
+  names: Set<string>;
+}> {
+  const byUuid = new Map<string, { name: string; updated: string }>();
+  const names = new Set<string>();
+  let entries: Awaited<ReturnType<typeof readDir>>;
+  try {
+    entries = await readDir(outDir);
+  } catch {
+    return { byUuid, names }; // pasta ainda não existe
+  }
+  const mds = entries.filter((e) => e.isFile && /\.md$/i.test(e.name));
+  for (let i = 0; i < mds.length; i++) {
+    if (i % 100 === 0) {
+      onProgress?.({
+        phase: "Conferindo notas existentes (anti-duplicata)",
+        done: i,
+        total: mds.length,
+      });
+    }
+    const name = mds[i].name;
+    names.add(name);
+    try {
+      const raw = await readTextFile(await join(outDir, name));
+      const meta = parseNoteMeta(raw);
+      if (!meta) continue;
+      const cur = byUuid.get(meta.uuid);
+      if (!cur || meta.updated > cur.updated) {
+        byUuid.set(meta.uuid, { name, updated: meta.updated });
+      }
+    } catch {
+      /* ilegível — ignora */
+    }
+  }
+  return { byUuid, names };
+}
 
 /**
  * Acha o export mais recente em Downloads (data-*.zip) e inclui todos os
@@ -122,36 +177,52 @@ export async function importClaudeZips(
   const unique = dedupeByUuid(all);
   await mkdir(outDir, { recursive: true });
 
+  // Anti-duplicata ENTRE importações: indexa o que já existe por uuid.
+  const { byUuid, names } = await scanExistingNotes(outDir, onProgress);
+
   // Fluxo oficial: grava SOMENTE a versão sem cortesias.
   const cort = prepareCortesias(DEFAULT_CORTESIAS);
 
-  const used = new Set<string>();
   let written = 0;
+  let updated = 0;
+  let unchanged = 0;
   let empty = 0;
 
   for (let i = 0; i < unique.length; i++) {
     if (i % 25 === 0) {
       onProgress?.({ phase: "Gravando notas .md (sem cortesias)", done: i, total: unique.length });
     }
-    const note = conversationToMarkdown(unique[i]);
+    const conv = unique[i];
+    const note = conversationToMarkdown(conv);
     if (!note) {
       empty++;
       continue;
     }
+
+    const uuid = String(conv.uuid ?? "");
+    const convUpdated = String(conv.updated_at ?? "");
+    const target = chooseTargetName(note, uuid, byUuid, names);
+
+    // Mesma conversa, mesma versão → nada a fazer (preserva mtime/ordem de importação).
+    if (target.existed && convUpdated && byUuid.get(uuid)?.updated === convUpdated) {
+      unchanged++;
+      continue;
+    }
+
     const cleaned = removeCortesias(note.content, cort);
-    let name = note.baseName;
-    if (used.has(name)) name = note.uuidName;
-    used.add(name);
     try {
-      await writeTextFile(await join(outDir, name), cleaned);
-      written++;
+      await writeTextFile(await join(outDir, target.name), cleaned);
+      if (target.existed) updated++;
+      else written++;
+      names.add(target.name);
+      if (uuid) byUuid.set(uuid, { name: target.name, updated: convUpdated });
     } catch (e) {
-      console.error("[import] falha ao gravar", name, e);
+      console.error("[import] falha ao gravar", target.name, e);
     }
   }
 
   onProgress?.({ phase: "Concluído", done: unique.length, total: unique.length });
-  return { read, unique: unique.length, written, empty };
+  return { read, unique: unique.length, written, updated, unchanged, empty };
 }
 
 export type CortesiasResult = {
