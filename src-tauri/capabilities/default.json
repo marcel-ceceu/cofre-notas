@@ -11,6 +11,13 @@
     "process:allow-restart",
     "store:default",
     {
+      "identifier": "opener:allow-open-url",
+      "allow": [
+        { "url": "https://claude.ai/*" },
+        { "url": "https://mail.google.com/*" }
+      ]
+    },
+    {
       "identifier": "http:default",
       "allow": [{ "url": "https://api.anthropic.com/*" }]
     },

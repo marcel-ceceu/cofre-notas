@@ -73,6 +73,20 @@ export async function findLatestExportZips(): Promise<string[]> {
   return group.length ? group : [newest.full];
 }
 
+/**
+ * Verifica se um .zip tem a "assinatura" de um export de conversas do Claude:
+ * descompacta em memória e confere se contém ao menos um `conversations.json`.
+ * Retorna false em qualquer falha (arquivo corrompido, não-zip, sem o JSON).
+ */
+export async function isCompatibleClaudeZip(path: string): Promise<boolean> {
+  try {
+    const bytes = await readFile(path);
+    return extractConversationsJson(bytes).length > 0;
+  } catch {
+    return false;
+  }
+}
+
 export async function importClaudeZips(
   zipPaths: string[],
   outDir: string,
@@ -108,24 +122,28 @@ export async function importClaudeZips(
   const unique = dedupeByUuid(all);
   await mkdir(outDir, { recursive: true });
 
+  // Fluxo oficial: grava SOMENTE a versão sem cortesias.
+  const cort = prepareCortesias(DEFAULT_CORTESIAS);
+
   const used = new Set<string>();
   let written = 0;
   let empty = 0;
 
   for (let i = 0; i < unique.length; i++) {
     if (i % 25 === 0) {
-      onProgress?.({ phase: "Gravando notas .md", done: i, total: unique.length });
+      onProgress?.({ phase: "Gravando notas .md (sem cortesias)", done: i, total: unique.length });
     }
     const note = conversationToMarkdown(unique[i]);
     if (!note) {
       empty++;
       continue;
     }
+    const cleaned = removeCortesias(note.content, cort);
     let name = note.baseName;
     if (used.has(name)) name = note.uuidName;
     used.add(name);
     try {
-      await writeTextFile(await join(outDir, name), note.content);
+      await writeTextFile(await join(outDir, name), cleaned);
       written++;
     } catch (e) {
       console.error("[import] falha ao gravar", name, e);
