@@ -57,6 +57,8 @@ export async function verifyReadPermission(
 ): Promise<boolean> {
   // Tauri: acesso permanente, sem prompt de permissão.
   if (isTauriRuntime()) return true;
+  // Vault web (IndexedDB): sempre acessível, não há permissão de disco.
+  if ((handle as { kind?: string }).kind === "webdb") return true;
 
   const h = handle as unknown as {
     queryPermission?: (o: { mode: "read" | "readwrite" }) => Promise<Perm>;

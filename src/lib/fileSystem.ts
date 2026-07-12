@@ -4,6 +4,11 @@ import {
   readVaultTauri,
   type TauriDirHandle,
 } from "./fileSystem.tauri";
+import {
+  isWebVaultHandle,
+  loadWebVaultNotes,
+  type WebVaultHandle,
+} from "./import/webVault";
 import { parseCreatedAt } from "./noteDates";
 
 export type Note = {
@@ -16,8 +21,15 @@ export type Note = {
   createdAt: number;
 };
 
-/** Handle opaco — varia conforme o runtime (web: FileSystemDirectoryHandle; Tauri: { path }). */
-export type VaultHandle = FileSystemDirectoryHandle | TauriDirHandle;
+/**
+ * Handle opaco — varia conforme o runtime:
+ * web/Chromium: FileSystemDirectoryHandle · Tauri: { path } ·
+ * fallback web universal: { kind: "webdb" } (notas no IndexedDB).
+ */
+export type VaultHandle =
+  | FileSystemDirectoryHandle
+  | TauriDirHandle
+  | WebVaultHandle;
 
 declare global {
   interface Window {
@@ -41,13 +53,18 @@ export async function pickVaultDirectory(): Promise<VaultHandle> {
   if (isTauriRuntime()) return pickVaultDirectoryTauri();
   if (!isWebFileSystemSupported()) {
     throw new Error(
-      "Ambiente sem suporte a leitura de pastas. Use Chrome/Edge ou rode no app desktop."
+      "Este navegador não lê pastas locais (só Chrome/Edge no desktop). " +
+        'Use o botão "Importar conversas do Claude" para subir o .zip — ' +
+        "as notas ficam salvas neste navegador."
     );
   }
   return window.showDirectoryPicker({ mode: "read" });
 }
 
 export async function readVault(handle: VaultHandle): Promise<Note[]> {
+  if (isWebVaultHandle(handle)) {
+    return loadWebVaultNotes();
+  }
   if (isTauriRuntime() && (handle as TauriDirHandle).kind === "tauri") {
     return readVaultTauri(handle as TauriDirHandle);
   }

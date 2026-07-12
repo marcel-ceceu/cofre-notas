@@ -1,6 +1,10 @@
 import { useEffect, useState } from "react";
 import { useVaultStore } from "./store/vaultStore";
-import { pickVaultDirectory, readVault } from "./lib/fileSystem";
+import {
+  pickVaultDirectory,
+  readVault,
+  type VaultHandle,
+} from "./lib/fileSystem";
 import {
   loadLastVaultHandle,
   saveLastVaultHandle,
@@ -80,6 +84,28 @@ export default function App() {
         setError(`${err.name ?? "Erro"}: ${err.message ?? String(e)}`);
         console.error("[cofre] handleOpenVault erro:", e);
       }
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  /**
+   * Pós-importação: no desktop recarrega a pasta aberta; no navegador ativa
+   * o cofre web (IndexedDB) e carrega as notas recém-importadas.
+   */
+  async function handleImported(dest: string) {
+    if (dest !== "web") return handleReloadVault();
+    setError(null);
+    setLoading(true);
+    try {
+      const handle: VaultHandle = { kind: "webdb" };
+      const found = await readVault(handle);
+      setDirHandle(handle);
+      setNotes(found);
+      setActivePath(found[0]?.path ?? null);
+      await saveLastVaultHandle(handle);
+    } catch (e) {
+      setError((e as Error).message);
     } finally {
       setLoading(false);
     }
@@ -171,7 +197,7 @@ export default function App() {
       {importOpen && (
         <ImportClaudeModal
           onClose={() => setImportOpen(false)}
-          onImported={() => handleReloadVault()}
+          onImported={handleImported}
         />
       )}
     </div>

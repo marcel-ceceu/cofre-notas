@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { open } from "@tauri-apps/plugin-dialog";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { basename } from "@tauri-apps/api/path";
@@ -11,11 +11,15 @@ import {
   type ImportProgress,
   type ImportResult,
 } from "../lib/import/runImport";
+import {
+  importClaudeZipsWeb,
+  isCompatibleClaudeZipFile,
+} from "../lib/import/webVault";
 
 type Props = {
   onClose: () => void;
-  /** Chamado após importar com sucesso, com a pasta de saída usada. */
-  onImported: (outDir: string) => void;
+  /** Chamado após importar com sucesso: pasta de saída (desktop) ou "web" (navegador). */
+  onImported: (dest: string) => void;
 };
 
 /** Pasta de saída padrão oficial do fluxo. */
@@ -37,6 +41,7 @@ export function ImportClaudeModal({ onClose, onImported }: Props) {
 
   const [step, setStep] = useState<Step>("intro");
   const [zipPaths, setZipPaths] = useState<string[]>([]);
+  const [zipFiles, setZipFiles] = useState<File[]>([]); // fallback web
   const [zipLabels, setZipLabels] = useState<string[]>([]);
   const [rejected, setRejected] = useState<string[]>([]);
   const [checking, setChecking] = useState(false);
@@ -46,10 +51,14 @@ export function ImportClaudeModal({ onClose, onImported }: Props) {
   const [progress, setProgress] = useState<ImportProgress | null>(null);
   const [result, setResult] = useState<ImportResult | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const tauri = isTauriRuntime();
+  const hasZips = tauri ? zipPaths.length > 0 : zipFiles.length > 0;
 
   // Auto-detecta o export mais recente em Downloads ao entrar na etapa de config.
   useEffect(() => {
-    if (step !== "config") return;
+    if (step !== "config" || !isTauriRuntime()) return;
     let cancelled = false;
     (async () => {
       try {
@@ -84,13 +93,18 @@ export function ImportClaudeModal({ onClose, onImported }: Props) {
 
   async function openExternal(url: string) {
     try {
-      await openUrl(url);
+      if (tauri) await openUrl(url);
+      else window.open(url, "_blank", "noopener");
     } catch (e) {
       console.error("[import] falha ao abrir link", url, e);
     }
   }
 
   async function pickZips() {
+    if (!tauri) {
+      fileInputRef.current?.click();
+      return;
+    }
     const sel = await open({
       multiple: true,
       filters: [{ name: "Export do Claude (.zip)", extensions: ["zip"] }],
@@ -117,20 +131,43 @@ export function ImportClaudeModal({ onClose, onImported }: Props) {
     }
   }
 
+  /** Fallback web: valida os File escolhidos no input (mesma assinatura). */
+  async function onWebFilesChosen(list: FileList | null) {
+    if (!list || list.length === 0) return;
+    setChecking(true);
+    setError(null);
+    try {
+      const accepted: File[] = [];
+      const bad: string[] = [];
+      for (const f of Array.from(list)) {
+        if (await isCompatibleClaudeZipFile(f)) accepted.push(f);
+        else bad.push(f.name);
+      }
+      setZipFiles(accepted);
+      setZipLabels(accepted.map((f) => f.name));
+      setRejected(bad);
+    } finally {
+      setChecking(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  }
+
   async function pickOutDir() {
     const sel = await open({ directory: true });
     if (typeof sel === "string") setOutDir(sel);
   }
 
   async function run() {
-    if (!zipPaths.length || !outDir) return;
+    if (!hasZips || (tauri && !outDir)) return;
     setRunning(true);
     setError(null);
     setResult(null);
     setProgress({ phase: "Iniciando…", done: 0, total: 0 });
     try {
-      // importClaudeZips já cria a pasta (mkdir recursive) e grava sem cortesias.
-      const r = await importClaudeZips(zipPaths, outDir, setProgress);
+      // Desktop: grava .md na pasta. Web: salva no IndexedDB do navegador.
+      const r = tauri
+        ? await importClaudeZips(zipPaths, outDir, setProgress)
+        : await importClaudeZipsWeb(zipFiles, setProgress);
       setResult(r);
     } catch (e) {
       setError((e as Error).message ?? String(e));
@@ -140,7 +177,7 @@ export function ImportClaudeModal({ onClose, onImported }: Props) {
   }
 
   function finish() {
-    if (result && outDir) onImported(outDir);
+    if (result) onImported(tauri ? outDir : "web");
     onClose();
   }
 
@@ -178,14 +215,7 @@ export function ImportClaudeModal({ onClose, onImported }: Props) {
           </button>
         </div>
 
-        {!isTauriRuntime() ? (
-          <div className="p-4">
-            <p className="text-sm text-zinc-600">
-              A importação só funciona no app desktop (Tauri), que tem acesso
-              nativo aos arquivos.
-            </p>
-          </div>
-        ) : step === "intro" ? (
+        {step === "intro" ? (
           /* ── Etapa 0 — Tutorial de exportação ─────────────────────────── */
           <div className="p-4 space-y-4 text-sm">
             <p className="text-zinc-700">
@@ -247,8 +277,18 @@ export function ImportClaudeModal({ onClose, onImported }: Props) {
             </ol>
           </div>
         ) : (
-          /* ── Etapa 1/2 — Seleção do ZIP e pasta de saída ──────────────── */
+          /* ── Etapa 1/2 — Seleção do ZIP e destino ─────────────────────── */
           <div className="p-4 space-y-4 text-sm">
+            {/* Fallback web: input de arquivo universal (Firefox/Safari/celular) */}
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".zip,application/zip"
+              multiple
+              className="hidden"
+              onChange={(e) => onWebFilesChosen(e.target.files)}
+            />
+
             {/* Passo 1 — ZIP */}
             <div className="space-y-1.5">
               <div className="flex items-center justify-between">
@@ -287,33 +327,46 @@ export function ImportClaudeModal({ onClose, onImported }: Props) {
               )}
             </div>
 
-            {/* Passo 2 — saída */}
-            <div className="space-y-1.5 border-t border-zinc-100 pt-3">
-              <div className="flex items-center justify-between">
-                <span className="font-medium text-zinc-800">
-                  2. Pasta de saída (.md, sem cortesias)
-                </span>
-                <button
-                  type="button"
-                  onClick={pickOutDir}
-                  disabled={running}
-                  className="rounded border border-zinc-300 px-2 py-1 text-xs text-zinc-700 hover:bg-zinc-50 disabled:opacity-40"
-                >
-                  Alterar pasta…
-                </button>
-              </div>
-              <p className="rounded border border-zinc-200 bg-zinc-50 p-2 text-xs font-mono text-zinc-600 break-all">
-                {outDir}
-              </p>
-              <p className="text-[11px] text-zinc-500">
-                A pasta é criada automaticamente se ainda não existir.
-              </p>
-              {outDir === vaultPath && (
-                <p className="text-[11px] text-emerald-600">
-                  É o cofre aberto: as conversas aparecem na lista após importar.
+            {/* Passo 2 — destino */}
+            {tauri ? (
+              <div className="space-y-1.5 border-t border-zinc-100 pt-3">
+                <div className="flex items-center justify-between">
+                  <span className="font-medium text-zinc-800">
+                    2. Pasta de saída (.md, sem cortesias)
+                  </span>
+                  <button
+                    type="button"
+                    onClick={pickOutDir}
+                    disabled={running}
+                    className="rounded border border-zinc-300 px-2 py-1 text-xs text-zinc-700 hover:bg-zinc-50 disabled:opacity-40"
+                  >
+                    Alterar pasta…
+                  </button>
+                </div>
+                <p className="rounded border border-zinc-200 bg-zinc-50 p-2 text-xs font-mono text-zinc-600 break-all">
+                  {outDir}
                 </p>
-              )}
-            </div>
+                <p className="text-[11px] text-zinc-500">
+                  A pasta é criada automaticamente se ainda não existir.
+                </p>
+                {outDir === vaultPath && (
+                  <p className="text-[11px] text-emerald-600">
+                    É o cofre aberto: as conversas aparecem na lista após importar.
+                  </p>
+                )}
+              </div>
+            ) : (
+              <div className="space-y-1.5 border-t border-zinc-100 pt-3">
+                <span className="font-medium text-zinc-800">
+                  2. Onde ficam as notas (sem cortesias)
+                </span>
+                <p className="rounded border border-zinc-200 bg-zinc-50 p-2 text-xs text-zinc-600">
+                  As conversas ficam salvas <strong>neste navegador</strong>{" "}
+                  (offline). Importar de novo só adiciona/atualiza — sem
+                  duplicatas.
+                </p>
+              </div>
+            )}
 
             {/* Progresso / resultado */}
             {progress && (
@@ -351,7 +404,7 @@ export function ImportClaudeModal({ onClose, onImported }: Props) {
         )}
 
         <div className="flex justify-end gap-2 border-t border-zinc-200 px-4 py-3">
-          {step === "intro" && isTauriRuntime() ? (
+          {step === "intro" ? (
             <>
               <button
                 type="button"
@@ -389,7 +442,7 @@ export function ImportClaudeModal({ onClose, onImported }: Props) {
               <button
                 type="button"
                 onClick={run}
-                disabled={running || zipPaths.length === 0 || !outDir}
+                disabled={running || !hasZips || (tauri && !outDir)}
                 className="rounded bg-violet-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-violet-700 disabled:opacity-50"
               >
                 {running ? "Importando…" : "Importar"}
