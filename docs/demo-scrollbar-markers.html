@@ -1,0 +1,589 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Demo — Marcadores de busca na rolagem</title>
+  <style>
+    :root {
+      --bg: #f4f4f5;
+      --panel: #ffffff;
+      --ink: #18181b;
+      --muted: #71717a;
+      --line: #e4e4e7;
+      --yellow: #fde047;
+      --yellow-deep: #eab308;
+      --accent: #7c3aed;
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Segoe UI", system-ui, sans-serif;
+      color: var(--ink);
+      background: linear-gradient(160deg, #fafafa 0%, #eef2ff 45%, #f4f4f5 100%);
+      min-height: 100vh;
+    }
+
+    header {
+      padding: 28px 32px 8px;
+      max-width: 1400px;
+      margin: 0 auto;
+    }
+    header h1 {
+      margin: 0 0 6px;
+      font-size: 1.45rem;
+      letter-spacing: -0.02em;
+    }
+    header p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 0.95rem;
+      max-width: 70ch;
+    }
+
+    .tabs {
+      display: flex;
+      gap: 8px;
+      padding: 20px 32px 0;
+      max-width: 1400px;
+      margin: 0 auto;
+      flex-wrap: wrap;
+    }
+    .tab {
+      border: 1px solid var(--line);
+      background: #fff;
+      color: var(--ink);
+      padding: 10px 14px;
+      border-radius: 10px;
+      cursor: pointer;
+      font-size: 0.9rem;
+      font-weight: 600;
+    }
+    .tab[aria-selected="true"] {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: #fff;
+    }
+    .tab small {
+      display: block;
+      font-weight: 400;
+      opacity: 0.8;
+      margin-top: 2px;
+      font-size: 0.75rem;
+    }
+
+    .panel {
+      display: none;
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 16px 32px 40px;
+    }
+    .panel.active { display: block; }
+
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      overflow: hidden;
+      box-shadow: 0 10px 30px rgba(24, 24, 27, 0.06);
+    }
+    .card-head {
+      padding: 14px 18px;
+      border-bottom: 1px solid var(--line);
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+    .card-head h2 {
+      margin: 0;
+      font-size: 1.05rem;
+    }
+    .card-head p {
+      margin: 4px 0 0;
+      color: var(--muted);
+      font-size: 0.85rem;
+    }
+    .badge {
+      font-size: 0.75rem;
+      font-weight: 700;
+      padding: 4px 8px;
+      border-radius: 999px;
+      background: #ede9fe;
+      color: #5b21b6;
+      white-space: nowrap;
+    }
+    .badge.rec { background: #dcfce7; color: #166534; }
+
+    mark {
+      background: var(--yellow);
+      color: #18181b;
+      border-radius: 3px;
+      padding: 0 2px;
+    }
+
+    /* ---------- Opção 1: ticks overlay ---------- */
+    .opt1-shell {
+      position: relative;
+      height: 520px;
+    }
+    .opt1-scroll {
+      height: 100%;
+      overflow-y: auto;
+      padding: 28px 40px 40px 32px;
+      scroll-behavior: smooth;
+    }
+    .opt1-ruler {
+      position: absolute;
+      top: 0;
+      right: 0;
+      width: 14px;
+      height: 100%;
+      pointer-events: none;
+      z-index: 2;
+    }
+    .opt1-ruler .tick {
+      position: absolute;
+      left: 2px;
+      right: 2px;
+      height: 3px;
+      background: var(--yellow-deep);
+      border-radius: 2px;
+      pointer-events: auto;
+      cursor: pointer;
+      box-shadow: 0 0 0 1px rgba(234, 179, 8, 0.35);
+    }
+    .opt1-ruler .tick:hover {
+      height: 5px;
+      background: #ca8a04;
+    }
+
+    /* ---------- Opção 2: scrollbar custom ---------- */
+    .opt2-shell {
+      display: grid;
+      grid-template-columns: 1fr 18px;
+      height: 520px;
+    }
+    .opt2-scroll {
+      overflow-y: scroll;
+      height: 100%;
+      padding: 28px 32px 40px;
+      scrollbar-width: none;
+      scroll-behavior: smooth;
+    }
+    .opt2-scroll::-webkit-scrollbar { width: 0; height: 0; }
+    .opt2-track {
+      position: relative;
+      background: #f4f4f5;
+      border-left: 1px solid var(--line);
+      cursor: pointer;
+    }
+    .opt2-thumb {
+      position: absolute;
+      left: 3px;
+      right: 3px;
+      height: 48px;
+      background: #a1a1aa;
+      border-radius: 8px;
+      opacity: 0.85;
+      pointer-events: none;
+    }
+    .opt2-track .tick {
+      position: absolute;
+      left: 2px;
+      right: 2px;
+      height: 3px;
+      background: var(--yellow-deep);
+      border-radius: 2px;
+      z-index: 1;
+    }
+
+    /* ---------- Opção 3: minimap ---------- */
+    .opt3-shell {
+      display: grid;
+      grid-template-columns: 1fr 88px;
+      height: 520px;
+    }
+    .opt3-scroll {
+      overflow-y: auto;
+      height: 100%;
+      padding: 28px 32px 40px;
+      scroll-behavior: smooth;
+    }
+    .opt3-map {
+      position: relative;
+      border-left: 1px solid var(--line);
+      background:
+        linear-gradient(180deg, #fafafa, #f4f4f5);
+      cursor: pointer;
+      overflow: hidden;
+    }
+    .opt3-map-lines {
+      position: absolute;
+      inset: 8px 10px;
+      opacity: 0.35;
+      background:
+        repeating-linear-gradient(
+          to bottom,
+          #d4d4d8 0,
+          #d4d4d8 2px,
+          transparent 2px,
+          transparent 7px
+        );
+    }
+    .opt3-map .band {
+      position: absolute;
+      left: 8px;
+      right: 8px;
+      height: 4px;
+      background: var(--yellow);
+      border: 1px solid var(--yellow-deep);
+      border-radius: 2px;
+      z-index: 2;
+    }
+    .opt3-viewport {
+      position: absolute;
+      left: 4px;
+      right: 4px;
+      border: 2px solid var(--accent);
+      border-radius: 6px;
+      background: rgba(124, 58, 237, 0.08);
+      pointer-events: none;
+      z-index: 3;
+      min-height: 28px;
+    }
+
+    .doc h3 {
+      margin: 1.4em 0 0.5em;
+      font-size: 1.15rem;
+    }
+    .doc p {
+      line-height: 1.65;
+      color: #3f3f46;
+      margin: 0 0 0.9em;
+    }
+    .doc code {
+      font-family: ui-monospace, Consolas, monospace;
+      font-size: 0.88em;
+      background: #f4f4f5;
+      padding: 1px 5px;
+      border-radius: 4px;
+    }
+    .doc ul {
+      margin: 0 0 1em;
+      padding-left: 1.2em;
+      color: #3f3f46;
+      line-height: 1.6;
+    }
+    .hint {
+      margin-top: 12px;
+      color: var(--muted);
+      font-size: 0.85rem;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Marcadores de busca na rolagem — 3 sugestões</h1>
+    <p>
+      Mesmo conteúdo e mesmos highlights amarelos. Compare o visual de cada abordagem.
+      Clique nos ticks/faixas para saltar até o trecho.
+    </p>
+  </header>
+
+  <div class="tabs" role="tablist">
+    <button class="tab" role="tab" aria-selected="true" data-tab="1">
+      1 · Faixa de ticks
+      <small>Recomendada · scrollbar nativa</small>
+    </button>
+    <button class="tab" role="tab" aria-selected="false" data-tab="2">
+      2 · Scrollbar custom
+      <small>Ticks dentro do track</small>
+    </button>
+    <button class="tab" role="tab" aria-selected="false" data-tab="3">
+      3 · Minimap
+      <small>Prévia do documento</small>
+    </button>
+  </div>
+
+  <!-- OPÇÃO 1 -->
+  <section class="panel active" id="panel-1" role="tabpanel">
+    <div class="card">
+      <div class="card-head">
+        <div>
+          <h2>Opção 1 — Overview ruler (ticks ao lado)</h2>
+          <p>Barra nativa intacta + traços amarelos na borda direita, estilo Firefox/VS Code.</p>
+        </div>
+        <span class="badge rec">Recomendada p/ o Cofre</span>
+      </div>
+      <div class="opt1-shell">
+        <div class="opt1-scroll" id="scroll1"></div>
+        <div class="opt1-ruler" id="ruler1" aria-hidden="true"></div>
+      </div>
+    </div>
+    <p class="hint">Os ticks ficam sobre/ao lado da scrollbar. Clique num tick amarelo para ir ao match.</p>
+  </section>
+
+  <!-- OPÇÃO 2 -->
+  <section class="panel" id="panel-2" role="tabpanel">
+    <div class="card">
+      <div class="card-head">
+        <div>
+          <h2>Opção 2 — Scrollbar customizada com markers</h2>
+          <p>Track próprio; thumb + ticks amarelos no mesmo canal.</p>
+        </div>
+        <span class="badge">Mais integrado visualmente</span>
+      </div>
+      <div class="opt2-shell">
+        <div class="opt2-scroll" id="scroll2"></div>
+        <div class="opt2-track" id="track2">
+          <div class="opt2-thumb" id="thumb2"></div>
+        </div>
+      </div>
+    </div>
+    <p class="hint">Arraste o thumb ou clique no track. Os ticks amarelos vivem dentro da barra.</p>
+  </section>
+
+  <!-- OPÇÃO 3 -->
+  <section class="panel" id="panel-3" role="tabpanel">
+    <div class="card">
+      <div class="card-head">
+        <div>
+          <h2>Opção 3 — Minimap do documento</h2>
+          <p>Prévia estreita com faixas amarelas + retângulo do viewport (estilo editor).</p>
+        </div>
+        <span class="badge">Mais rico · mais espaço</span>
+      </div>
+      <div class="opt3-shell">
+        <div class="opt3-scroll" id="scroll3"></div>
+        <div class="opt3-map" id="map3">
+          <div class="opt3-map-lines"></div>
+          <div class="opt3-viewport" id="viewport3"></div>
+        </div>
+      </div>
+    </div>
+    <p class="hint">Clique no minimap para saltar. O retângulo roxo mostra a região visível.</p>
+  </section>
+
+  <template id="doc-template">
+    <div class="doc">
+      <h3>Contexto — PK SYNC</h3>
+      <p>
+        Esta nota simula um export do Claude. A busca por
+        <mark>sync</mark> aparece em vários pontos do documento para testar
+        os marcadores na rolagem.
+      </p>
+      <p>
+        A ideia do <mark>sync</mark> é manter o cofre alinhado com a pasta
+        Obsidian e com o destino remoto, sem depender de cópia manual.
+      </p>
+
+      <h3>Observações técnicas</h3>
+      <ul>
+        <li>Infra de destino útil pro <mark>sync</mark> do bcksankhya.</li>
+        <li>Mapear caminhos relativos antes do <mark>sync</mark>.</li>
+        <li>Evitar conflito quando o <mark>sync</mark> roda em paralelo.</li>
+      </ul>
+
+      <h3>Fluxo proposto</h3>
+      <p>
+        1) Ler notas locais · 2) Diff · 3) Aplicar <mark>sync</mark> ·
+        4) Validar contagem. Se falhar, o <mark>sync</mark> deve ser idempotente.
+      </p>
+      <p>
+        No log, prefira <code>pk_sync_status</code> e marque cada lote do
+        <mark>sync</mark> com timestamp ISO.
+      </p>
+
+      <h3>SQL de apoio</h3>
+      <p>
+        Use views só de leitura no caminho do <mark>sync</mark>. Exemplo:
+        <code>SELECT * FROM vw_pk_sync_queue WHERE status = 'PENDENTE'</code>.
+      </p>
+      <p>
+        Depois do <mark>sync</mark>, conferir se não sobrou fila residual.
+      </p>
+
+      <h3>Riscos</h3>
+      <p>
+        Se o <mark>sync</mark> sobrescrever notas editadas localmente, perde-se
+        histórico. Bloquear escrita quando houver dirty state.
+      </p>
+      <p>
+        Timeout curto demais aborta o <mark>sync</mark> no meio do lote.
+      </p>
+
+      <h3>Checklist</h3>
+      <ul>
+        <li>Backup antes do primeiro <mark>sync</mark></li>
+        <li>Testar com 10 notas</li>
+        <li>Só então liberar <mark>sync</mark> completo</li>
+        <li>Monitorar erros de path no <mark>sync</mark></li>
+      </ul>
+
+      <h3>Conclusão</h3>
+      <p>
+        Com marcadores amarelos na rolagem, achar cada <mark>sync</mark>
+        fica imediato — sem depender só do highlight no texto.
+      </p>
+      <p>
+        Fim do documento de demonstração do <mark>sync</mark>.
+      </p>
+    </div>
+  </template>
+
+  <script>
+    const tpl = document.getElementById("doc-template");
+
+    function fill(el) {
+      el.innerHTML = "";
+      el.appendChild(tpl.content.cloneNode(true));
+    }
+
+    fill(document.getElementById("scroll1"));
+    fill(document.getElementById("scroll2"));
+    fill(document.getElementById("scroll3"));
+
+    /* Tabs */
+    document.querySelectorAll(".tab").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        document.querySelectorAll(".tab").forEach((b) => b.setAttribute("aria-selected", "false"));
+        document.querySelectorAll(".panel").forEach((p) => p.classList.remove("active"));
+        btn.setAttribute("aria-selected", "true");
+        document.getElementById("panel-" + btn.dataset.tab).classList.add("active");
+        // Recalc when becoming visible
+        requestAnimationFrame(() => {
+          if (btn.dataset.tab === "1") buildOpt1();
+          if (btn.dataset.tab === "2") buildOpt2();
+          if (btn.dataset.tab === "3") buildOpt3();
+        });
+      });
+    });
+
+    function matchPositions(scrollEl) {
+      const marks = [...scrollEl.querySelectorAll("mark")];
+      const scrollH = scrollEl.scrollHeight;
+      return marks.map((m) => {
+        const top = m.offsetTop;
+        return { el: m, ratio: top / scrollH, top };
+      });
+    }
+
+    /* ---- Opção 1 ---- */
+    function buildOpt1() {
+      const scroll = document.getElementById("scroll1");
+      const ruler = document.getElementById("ruler1");
+      ruler.innerHTML = "";
+      const viewH = scroll.clientHeight;
+      const scrollH = scroll.scrollHeight;
+      matchPositions(scroll).forEach(({ el, top }) => {
+        const tick = document.createElement("button");
+        tick.type = "button";
+        tick.className = "tick";
+        tick.title = "Ir ao match";
+        tick.style.top = (top / scrollH) * viewH + "px";
+        tick.addEventListener("click", () => {
+          el.scrollIntoView({ behavior: "smooth", block: "center" });
+        });
+        ruler.appendChild(tick);
+      });
+    }
+
+    /* ---- Opção 2 ---- */
+    function buildOpt2() {
+      const scroll = document.getElementById("scroll2");
+      const track = document.getElementById("track2");
+      const thumb = document.getElementById("thumb2");
+
+      // clear old ticks (keep thumb)
+      track.querySelectorAll(".tick").forEach((t) => t.remove());
+
+      const trackH = track.clientHeight;
+      const scrollH = scroll.scrollHeight;
+      const viewH = scroll.clientHeight;
+      const thumbH = Math.max(28, (viewH / scrollH) * trackH);
+      thumb.style.height = thumbH + "px";
+
+      function syncThumb() {
+        const maxScroll = scrollH - viewH;
+        const maxThumb = trackH - thumbH;
+        thumb.style.top = maxScroll <= 0 ? "0px" : (scroll.scrollTop / maxScroll) * maxThumb + "px";
+      }
+
+      matchPositions(scroll).forEach(({ el, top }) => {
+        const tick = document.createElement("div");
+        tick.className = "tick";
+        tick.style.top = (top / scrollH) * trackH + "px";
+        tick.addEventListener("click", (e) => {
+          e.stopPropagation();
+          el.scrollIntoView({ behavior: "smooth", block: "center" });
+        });
+        track.appendChild(tick);
+      });
+
+      scroll.onscroll = syncThumb;
+      syncThumb();
+
+      track.onclick = (e) => {
+        if (e.target.classList.contains("tick")) return;
+        const rect = track.getBoundingClientRect();
+        const y = e.clientY - rect.top;
+        const ratio = y / trackH;
+        scroll.scrollTop = ratio * (scrollH - viewH);
+      };
+    }
+
+    /* ---- Opção 3 ---- */
+    function buildOpt3() {
+      const scroll = document.getElementById("scroll3");
+      const map = document.getElementById("map3");
+      const viewport = document.getElementById("viewport3");
+
+      map.querySelectorAll(".band").forEach((b) => b.remove());
+
+      const mapH = map.clientHeight;
+      const scrollH = scroll.scrollHeight;
+      const viewH = scroll.clientHeight;
+
+      matchPositions(scroll).forEach(({ el, top }) => {
+        const band = document.createElement("div");
+        band.className = "band";
+        band.style.top = (top / scrollH) * mapH + "px";
+        band.addEventListener("click", (e) => {
+          e.stopPropagation();
+          el.scrollIntoView({ behavior: "smooth", block: "center" });
+        });
+        map.appendChild(band);
+      });
+
+      function syncViewport() {
+        const maxScroll = scrollH - viewH;
+        const vpH = Math.max(28, (viewH / scrollH) * mapH);
+        const maxTop = mapH - vpH;
+        viewport.style.height = vpH + "px";
+        viewport.style.top = maxScroll <= 0 ? "0px" : (scroll.scrollTop / maxScroll) * maxTop + "px";
+      }
+
+      scroll.onscroll = syncViewport;
+      syncViewport();
+
+      map.onclick = (e) => {
+        if (e.target.classList.contains("band")) return;
+        const rect = map.getBoundingClientRect();
+        const y = e.clientY - rect.top;
+        scroll.scrollTop = (y / mapH) * (scrollH - viewH);
+      };
+    }
+
+    buildOpt1();
+    window.addEventListener("resize", () => {
+      const active = document.querySelector(".tab[aria-selected='true']")?.dataset.tab;
+      if (active === "1") buildOpt1();
+      if (active === "2") buildOpt2();
+      if (active === "3") buildOpt3();
+    });
+  </script>
+</body>
+</html>

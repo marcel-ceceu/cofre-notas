@@ -8,7 +8,7 @@
 | **Nome do app (UI / instalador)** | Cofre de Notas |
 | **Repositório GitHub** | [marcel-ceceu/cofre-notas](https://github.com/marcel-ceceu/cofre-notas) |
 | **Stack** | Tauri 2 + Vite + React 18 + Tailwind 4 |
-| **Versão atual** | **0.8.0** (tag `v0.8.0`) |
+| **Versão atual** | **0.9.2** (tag `v0.9.2`) |
 | **Auto-update** | GitHub Releases + `latest.json` + `UpdateBanner` |
 
 > O **nome da pasta local** segue a convenção `2606_*` do workspace. O **repo remoto** e o **identificador Tauri** (`com.marcel.cofre-notas`) mantêm-se `cofre-notas` para não quebrar releases nem updates já instalados.
@@ -16,6 +16,16 @@
 ---
 
 ## Entradas de histórico
+
+### 20/07/2026 — v0.9.2: marcadores amarelos na barra de rolagem
+
+**Contexto:** com busca ativa, os `<mark>` no viewer não tinham overview na scrollbar.
+
+**Mudança:** faixa de ticks amarelos (overview ruler) na borda direita do viewer — um traço por ocorrência; clique salta ao trecho. Demo em `docs/demo-scrollbar-markers.html`.
+
+**Validação:** abrir nota com matches → ticks na direita; clicar → scroll ao highlight.
+
+---
 
 ### 29/06/2026 10:23 Segunda — reorganização de pastas no workspace
 
@@ -41,6 +51,9 @@
 
 | Versão | Data (release) | Destaques |
 |--------|----------------|-----------|
+| **0.9.2** | 20/07/2026 | Overview ruler: ticks amarelos na rolagem do viewer (matches da busca) |
+| 0.9.1 | — | (patch) |
+| 0.9.0 | — | Import web / PWA |
 | **0.8.0** | 29/06/2026 | Destino padrão `Desktop\CAIXA DE ENTRADA\notas`; exportar rápido (selecionadas / todos pesquisados) |
 | 0.7.0 | 19/06/2026 | Exportar a partir de lista colada de caminhos |
 | 0.6.0 | 19/06/2026 | Seleção múltipla nos resultados; menu «Copiar caminhos» |

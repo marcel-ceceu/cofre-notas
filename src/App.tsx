@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useVaultStore } from "./store/vaultStore";
 import {
   pickVaultDirectory,
@@ -13,6 +13,7 @@ import {
 import { filterNotes } from "./lib/search";
 import { NoteList } from "./components/NoteList";
 import { NoteViewer } from "./components/NoteViewer";
+import { SearchScrollRuler } from "./components/SearchScrollRuler";
 import { SortControl } from "./components/SortControl";
 import { SearchBox } from "./components/SearchBox";
 import { UpdateBanner } from "./components/UpdateBanner";
@@ -30,8 +31,10 @@ export default function App() {
   const setActivePath = useVaultStore((s) => s.setActivePath);
   const setLoading = useVaultStore((s) => s.setLoading);
   const setError = useVaultStore((s) => s.setError);
+  const activePath = useVaultStore((s) => s.activePath);
   const [importOpen, setImportOpen] = useState(false);
   const { width: sidebarWidth, onHandleMouseDown } = useSidebarWidth();
+  const viewerScrollRef = useRef<HTMLElement>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -190,9 +193,20 @@ export default function App() {
           title="Arraste para ajustar a largura"
         />
 
-        <main className="flex-1 overflow-y-auto bg-white">
-          <NoteViewer />
-        </main>
+        <div className="relative flex-1 min-h-0 min-w-0">
+          <main
+            ref={viewerScrollRef}
+            className="h-full overflow-y-auto bg-white"
+          >
+            <NoteViewer />
+          </main>
+          {query ? (
+            <SearchScrollRuler
+              scrollRef={viewerScrollRef}
+              deps={[activePath, query, searchPrefs.searchMode]}
+            />
+          ) : null}
+        </div>
       </div>
       {importOpen && (
         <ImportClaudeModal
