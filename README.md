@@ -6,9 +6,20 @@ consolidação e sincronização para o Supabase.
 
 ## Abrir o app
 
-**Uso normal:** rode o instalador em
-`src-tauri/target/release/bundle/nsis/` ou abra direto o executável
-`src-tauri/target/release/cofre-notas.exe`. Não precisa de terminal aberto.
+**Uso normal:** rode o instalador
+`src-tauri/target/release/bundle/nsis/Cofre de Notas_0.9.2_x64-setup.exe`,
+ou abra direto o executável `src-tauri/target/release/app.exe` (o nome vem do
+pacote Cargo; o instalador é que cria o atalho "Cofre de Notas"). Não precisa
+de terminal aberto.
+
+Para gerar esses artefatos:
+
+```bash
+npm run tauri build
+```
+
+A assinatura do updater exige `TAURI_SIGNING_PRIVATE_KEY` apontando para o
+conteúdo de `~/.tauri/cofre-notas.key`.
 
 **Desenvolvimento:**
 
