@@ -16,12 +16,12 @@ export function SortControl() {
   const setSortKey = useVaultStore((s) => s.setSortKey);
 
   return (
-    <label className="flex items-center gap-2 text-xs text-zinc-600">
-      <span className="shrink-0">Ordenar:</span>
+    <label className="flex items-center gap-2">
+      <span className="meta-label shrink-0">Ordem</span>
       <select
         value={sortKey}
         onChange={(e) => setSortKey(e.target.value as SortKey)}
-        className="flex-1 px-2 py-1 rounded border border-zinc-300 bg-white text-zinc-800 focus:outline-none focus:ring-1 focus:ring-zinc-400"
+        className="field flex-1 px-1.5"
       >
         {OPTIONS.map((o) => (
           <option key={o.value} value={o.value}>

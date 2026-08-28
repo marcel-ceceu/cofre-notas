@@ -1,71 +1,494 @@
 @import "tailwindcss";
 
+/* Fontes locais (o app roda offline no Tauri) */
+@import "@fontsource-variable/fraunces";
+@import "@fontsource-variable/newsreader";
+@import "@fontsource/ibm-plex-sans/400.css";
+@import "@fontsource/ibm-plex-sans/500.css";
+@import "@fontsource/ibm-plex-sans/600.css";
+@import "@fontsource/ibm-plex-mono/400.css";
+@import "@fontsource/ibm-plex-mono/500.css";
+
+:root {
+  /* ---- identidade (roxo Obsidian) ---- */
+  --primary: #7c5cd6;
+  --primary-strong: #6748c4;
+  --primary-hover: #8f74e0;
+  --primary-subtle: #efe9fc; /* tinta de identidade em baixa intensidade */
+  --primary-ring: #c9b8f5;
+
+  /* ---- hierarquia de superficies (undertone roxo sutil) ----
+     nivel 3 (mais claro) = area de trabalho / leitura
+     nivel 2 = painel lateral
+     nivel 1 = moldura do app (toolbar, rail, status, cabecalhos) */
+  --surface: #ffffff;
+  --surface-secondary: #f7f6fb;
+  --surface-tertiary: #efedf7;
+  --surface-sunken: #e7e2f2;
+
+  /* separacao */
+  --border: #e4e0ee;
+  --border-soft: #edeaf5;
+
+  /* estados */
+  --selected: #e6dcfb; /* selecionado — identidade evidente */
+  --hover: #efecf7; /* hover neutro na moldura */
+
+  /* ---- aliases legados (mapeados para os tokens acima) ---- */
+  --paper: var(--surface-secondary);
+  --paper-raised: var(--surface);
+  --paper-sunken: var(--surface-sunken);
+  --chrome: var(--surface-tertiary);
+  --rule: var(--border);
+  --rule-soft: var(--border-soft);
+
+  --accent: var(--primary);
+  --accent-strong: var(--primary-strong);
+  --accent-hover: var(--primary-hover);
+  --accent-soft: var(--primary-subtle);
+  --accent-ring: var(--primary-ring);
+
+  /* tinta */
+  --ink: #1f1e24;
+  --ink-muted: #6a6875;
+  --ink-faint: #9b98a6;
+
+  /* realce de busca */
+  --mark: #ddcffb;
+  --mark-ink: #3a2a72;
+
+  --ui: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
+  --read: "Newsreader Variable", "Newsreader", Georgia, serif;
+  --display: "Fraunces Variable", "Fraunces", Georgia, serif;
+  --mono: "IBM Plex Mono", ui-monospace, monospace;
+
+  --ease: cubic-bezier(0.16, 1, 0.3, 1);
+
+  /* alturas fixas do chrome — densidade de app */
+  --toolbar-h: 38px;
+  --status-h: 24px;
+}
+
 html,
 body,
 #root {
   height: 100%;
 }
 
-body {
-  margin: 0;
-  font-family:
-    ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue",
-    Arial, sans-serif;
-  background: #fafafa;
-  color: #18181b;
+html {
+  color-scheme: light;
 }
 
+body {
+  margin: 0;
+  font-family: var(--ui);
+  font-feature-settings: "cv05" 1;
+  background: var(--paper);
+  color: var(--ink);
+  font-size: 13px;
+  -webkit-font-smoothing: antialiased;
+  overscroll-behavior: none;
+}
+
+/* Superficie de leitura: papel liso, sem textura */
+.paper-grain {
+  background-color: var(--paper-raised);
+}
+
+.font-display {
+  font-family: var(--display);
+  font-variation-settings: "SOFT" 20, "WONK" 1, "opsz" 40;
+}
+.font-read {
+  font-family: var(--read);
+}
+.font-mono-ui {
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Rotulos de metadados: mono, versalete, tabular */
+.meta-label {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-faint);
+}
+
+/* ---------- Chrome do app ---------- */
+.toolbar {
+  height: var(--toolbar-h);
+  background: var(--surface-tertiary);
+  border-bottom: 1px solid var(--border);
+  /* leve profundidade — define a topbar como o plano superior sem cor */
+  box-shadow: 0 1px 2px rgba(31, 30, 36, 0.05);
+  z-index: 1;
+}
+
+.statusbar {
+  height: var(--status-h);
+  background: var(--chrome);
+  border-top: 1px solid var(--rule);
+  font-family: var(--mono);
+  font-size: 10.5px;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-muted);
+}
+
+/* Botao de barra de ferramentas: alvo compacto, estado claro */
+.tb-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 26px;
+  padding: 0 8px;
+  border-radius: 5px;
+  border: 1px solid transparent;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--ink-muted);
+  white-space: nowrap;
+  transition:
+    background-color 0.12s var(--ease),
+    color 0.12s var(--ease),
+    border-color 0.12s var(--ease);
+}
+.tb-btn:hover:not(:disabled) {
+  background: var(--hover);
+  color: var(--ink);
+}
+.tb-btn:active:not(:disabled) {
+  background: var(--rule-soft);
+}
+.tb-btn:disabled {
+  opacity: 0.35;
+  pointer-events: none;
+}
+.tb-btn--primary {
+  background: var(--accent);
+  border-color: transparent;
+  color: #fff;
+}
+.tb-btn--primary:hover:not(:disabled) {
+  background: var(--accent-strong);
+  color: #fff;
+}
+.tb-btn--icon {
+  width: 26px;
+  padding: 0;
+  justify-content: center;
+}
+
+/* Rail de atividades — coluna de icones a esquerda */
+.rail-btn {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  color: var(--ink-faint);
+  transition:
+    background-color 0.12s var(--ease),
+    color 0.12s var(--ease);
+}
+.rail-btn:hover {
+  background: var(--hover);
+  color: var(--ink-muted);
+}
+.rail-btn--active {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+.rail-btn--active::before {
+  content: "";
+  position: absolute;
+  left: -8px;
+  top: 6px;
+  bottom: 6px;
+  width: 2px;
+  border-radius: 0 2px 2px 0;
+  background: var(--accent);
+}
+/* Troca de fase do modal de sincronizacao */
+@keyframes phase-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: none; }
+}
+.phase-in { animation: phase-in 0.26s var(--ease) both; }
+@media (prefers-reduced-motion: reduce) {
+  .phase-in { animation: none; }
+}
+
+.rail-btn--accent {
+  color: var(--accent);
+  background: var(--accent-soft);
+  border: 1px solid var(--accent-ring);
+}
+.rail-btn--accent:hover {
+  background: var(--accent);
+  border-color: var(--accent-strong);
+  color: #fff;
+}
+
+.rail-badge {
+  position: absolute;
+  top: 1px;
+  right: 1px;
+  min-width: 14px;
+  height: 14px;
+  padding: 0 3px;
+  border-radius: 99px;
+  background: var(--accent);
+  color: #fff;
+  font-family: var(--mono);
+  font-size: 9px;
+  line-height: 14px;
+  text-align: center;
+}
+
+/* Botao de segmento (escolha entre poucas opcoes) */
+.seg-btn {
+  height: 26px;
+  border: 1px solid var(--rule);
+  border-radius: 5px;
+  background: var(--paper-raised);
+  font-size: 11.5px;
+  font-weight: 500;
+  color: var(--ink-muted);
+  transition:
+    background-color 0.12s var(--ease),
+    border-color 0.12s var(--ease),
+    color 0.12s var(--ease);
+}
+.seg-btn:hover {
+  border-color: var(--accent-ring);
+  color: var(--ink);
+}
+.seg-btn--on {
+  background: var(--accent-soft);
+  border-color: var(--accent-ring);
+  color: var(--accent-strong);
+}
+
+/* Tecla de atalho impressa na interface */
+.kbd {
+  font-family: var(--mono);
+  font-size: 9.5px;
+  line-height: 1;
+  padding: 3px 4px;
+  border: 1px solid var(--rule);
+  border-bottom-width: 2px;
+  border-radius: 3px;
+  background: var(--paper-raised);
+  color: var(--ink-faint);
+}
+
+/* Cabecalho de secao da barra lateral */
+.pane-head {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 26px;
+  padding: 0 10px 0 12px;
+  background: var(--surface-tertiary);
+  border-bottom: 1px solid var(--border);
+}
+/* marcador de identidade — sinaliza "cabeçalho de seção" */
+.pane-head::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 4px;
+  bottom: 4px;
+  width: 2px;
+  border-radius: 0 2px 2px 0;
+  background: var(--primary);
+  opacity: 0.55;
+}
+
+/* Titulo de secao — a cor forte permitida (ancora de hierarquia) */
+.pane-title {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  font-weight: 600;
+  color: var(--primary-strong);
+}
+
+/* Campos de formulario, densos e uniformes */
+.field {
+  height: 28px;
+  width: 100%;
+  border: 1px solid var(--rule);
+  background: var(--paper-raised);
+  border-radius: 5px;
+  font-size: 12.5px;
+  color: var(--ink);
+  transition:
+    border-color 0.12s var(--ease),
+    box-shadow 0.12s var(--ease);
+}
+.field:focus {
+  outline: none;
+  border-color: var(--accent-ring);
+  box-shadow: 0 0 0 2px var(--accent-soft);
+}
+.field::placeholder {
+  color: var(--ink-faint);
+}
+
+/* Barra de rolagem discreta */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--rule) transparent;
+}
+*::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+*::-webkit-scrollbar-thumb {
+  background: var(--rule);
+  border-radius: 99px;
+  border: 3px solid transparent;
+  background-clip: content-box;
+}
+*::-webkit-scrollbar-thumb:hover {
+  background: var(--ink-faint);
+  background-clip: content-box;
+}
+
+/* Foco visivel e coerente em todo o app */
+:where(button, input, select, a, [tabindex]):focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+  border-radius: 4px;
+}
+
+/* Entrada escalonada dos itens da lista */
+@keyframes row-in {
+  from {
+    opacity: 0;
+    transform: translateY(3px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.row-in {
+  animation: row-in 0.22s var(--ease) both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .row-in {
+    animation: none;
+  }
+}
+
+mark,
+.hl {
+  background: var(--mark);
+  color: var(--mark-ink);
+  border-radius: 2px;
+  padding: 0 1px;
+}
+
+/* ---------- Corpo do markdown: leitura longa ---------- */
 .md-body {
-  font-size: 15px;
-  line-height: 1.7;
-  color: #27272a;
+  font-family: var(--ui);
+  font-size: 14.5px;
+  line-height: 1.68;
+  color: #2b2a33;
 }
 .md-body > * + * {
-  margin-top: 1em;
+  margin-top: 0.95em;
+}
+.md-body h1,
+.md-body h2,
+.md-body h3,
+.md-body h4,
+.md-body h5,
+.md-body h6 {
+  font-family: var(--ui);
+  letter-spacing: -0.012em;
+  color: var(--ink);
 }
 .md-body h1 {
-  font-size: 1.75rem;
+  font-size: 1.4rem;
+  font-weight: 600;
+  margin-top: 1.6em;
+  line-height: 1.25;
+}
+.md-body h2 {
+  font-size: 1.15rem;
   font-weight: 600;
   margin-top: 1.6em;
   line-height: 1.3;
-}
-.md-body h2 {
-  font-size: 1.4rem;
-  font-weight: 600;
-  margin-top: 1.5em;
-  line-height: 1.3;
+  padding-bottom: 0.3em;
+  border-bottom: 1px solid var(--rule-soft);
 }
 .md-body h3 {
-  font-size: 1.15rem;
+  font-size: 1rem;
   font-weight: 600;
-  margin-top: 1.3em;
+  margin-top: 1.4em;
 }
 .md-body h4,
 .md-body h5,
 .md-body h6 {
+  font-size: 0.92rem;
   font-weight: 600;
   margin-top: 1.2em;
+  color: var(--ink-muted);
 }
 .md-body p {
   margin: 0;
 }
+.md-body strong {
+  font-weight: 600;
+  color: var(--ink);
+}
 .md-body a {
-  color: #2563eb;
+  color: var(--accent);
   text-decoration: underline;
-  text-underline-offset: 2px;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+  transition: color 0.15s var(--ease);
 }
 .md-body a:hover {
-  color: #1d4ed8;
+  color: var(--accent-hover);
 }
 .md-body ul,
 .md-body ol {
-  padding-left: 1.5em;
+  padding-left: 1.3em;
 }
 .md-body ul {
-  list-style: disc;
+  list-style: none;
+}
+.md-body ul > li {
+  position: relative;
+}
+.md-body ul > li::before {
+  content: "";
+  position: absolute;
+  left: -0.9em;
+  top: 0.68em;
+  width: 4px;
+  height: 4px;
+  border-radius: 99px;
+  background: var(--accent-ring);
 }
 .md-body ol {
   list-style: decimal;
+}
+.md-body ol::marker,
+.md-body li::marker {
+  color: var(--ink-faint);
+  font-family: var(--mono);
+  font-size: 0.85em;
 }
 .md-body li + li {
   margin-top: 0.25em;
@@ -75,32 +498,38 @@ body {
 }
 .md-body input[type="checkbox"] {
   margin-right: 0.4em;
+  accent-color: var(--accent);
   transform: translateY(1px);
 }
 .md-body blockquote {
-  border-left: 3px solid #d4d4d8;
-  padding: 0.1em 0 0.1em 1em;
-  color: #52525b;
-  font-style: italic;
+  border-left: 2px solid var(--accent-ring);
+  background: var(--accent-soft);
+  padding: 0.5em 0.9em;
+  border-radius: 0 4px 4px 0;
+  color: #4a4458;
 }
 .md-body code {
-  background: #f4f4f5;
-  padding: 0.15em 0.35em;
+  background: var(--paper-sunken);
+  border: 1px solid var(--rule-soft);
+  padding: 0.1em 0.35em;
   border-radius: 4px;
-  font-size: 0.9em;
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.85em;
+  font-family: var(--mono);
 }
 .md-body pre {
-  background: #18181b;
-  color: #fafafa;
-  padding: 1em;
-  border-radius: 8px;
+  background: #201f26;
+  color: #e6e4ee;
+  padding: 0.9em 1.05em;
+  border-radius: 6px;
   overflow-x: auto;
-  font-size: 0.875em;
-  line-height: 1.55;
+  font-size: 0.82em;
+  line-height: 1.6;
+  font-family: var(--mono);
+  border: 1px solid var(--rule);
 }
 .md-body pre code {
   background: transparent;
+  border: 0;
   padding: 0;
   color: inherit;
   font-size: inherit;
@@ -108,24 +537,29 @@ body {
 .md-body table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 0.92em;
+  font-family: var(--ui);
+  font-size: 0.86em;
+  font-variant-numeric: tabular-nums;
 }
 .md-body th,
 .md-body td {
-  border: 1px solid #e4e4e7;
-  padding: 0.5em 0.75em;
+  border: 1px solid var(--rule-soft);
+  padding: 0.42em 0.7em;
   text-align: left;
 }
 .md-body th {
-  background: #f4f4f5;
+  background: var(--paper-sunken);
   font-weight: 600;
+  letter-spacing: 0.02em;
 }
 .md-body hr {
   border: 0;
-  border-top: 1px solid #e4e4e7;
+  height: 1px;
+  background: var(--rule);
   margin: 2em 0;
 }
 .md-body img {
   max-width: 100%;
   border-radius: 6px;
+  border: 1px solid var(--rule-soft);
 }

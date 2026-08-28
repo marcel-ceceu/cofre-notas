@@ -68,6 +68,10 @@ type VaultState = {
   sortKey: SortKey;
   query: string;
   searchPrefs: SearchPrefs;
+  /** Notas marcadas na lista — alimentam o painel de consolidação. */
+  selectedPaths: string[];
+  /** Escopo do envio ao Supabase: null = cofre inteiro; lista = só estas notas. */
+  syncScope: string[] | null;
 
   setDirHandle: (h: VaultHandle | null) => void;
   setNotes: (notes: Note[]) => void;
@@ -77,6 +81,9 @@ type VaultState = {
   setSortKey: (sortKey: SortKey) => void;
   setQuery: (query: string) => void;
   setSearchPrefs: (patch: Partial<SearchPrefs>) => void;
+  setSelectedPaths: (paths: string[]) => void;
+  clearSelection: () => void;
+  setSyncScope: (paths: string[] | null) => void;
   resetSearchPrefs: () => void;
   reset: () => void;
 };
@@ -90,6 +97,8 @@ export const useVaultStore = create<VaultState>((set, get) => ({
   sortKey: loadSortKey(),
   query: "",
   searchPrefs: loadSearchPrefs(),
+  selectedPaths: [],
+  syncScope: null,
 
   setDirHandle: (dirHandle) => set({ dirHandle }),
   setNotes: (notes) => set({ notes }),
@@ -108,6 +117,9 @@ export const useVaultStore = create<VaultState>((set, get) => ({
     saveSearchPrefs(next);
     set({ searchPrefs: next });
   },
+  setSelectedPaths: (selectedPaths) => set({ selectedPaths }),
+  clearSelection: () => set({ selectedPaths: [] }),
+  setSyncScope: (syncScope) => set({ syncScope }),
   resetSearchPrefs: () => {
     saveSearchPrefs(DEFAULT_SEARCH_PREFS);
     set({ searchPrefs: DEFAULT_SEARCH_PREFS });
@@ -120,5 +132,6 @@ export const useVaultStore = create<VaultState>((set, get) => ({
       loading: false,
       error: null,
       query: "",
+      selectedPaths: [],
     }),
 }));

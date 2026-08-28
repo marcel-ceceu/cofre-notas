@@ -4,6 +4,11 @@ dist-ssr
 *.local
 .vite
 
+# Variaveis de ambiente — NUNCA versionar (contem a anon key do Supabase)
+.env
+.env.*
+!.env.example
+
 # Rust / Tauri
 src-tauri/target
 
@@ -17,3 +22,6 @@ Thumbs.db
 .vscode/*
 !.vscode/extensions.json
 .idea
+
+# artefatos de build do TypeScript
+*.tsbuildinfo

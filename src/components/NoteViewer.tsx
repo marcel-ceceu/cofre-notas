@@ -73,21 +73,38 @@ export function NoteViewer() {
 
   if (!note) {
     return (
-      <div className="h-full grid place-items-center text-zinc-400 text-sm">
-        Selecione uma nota
+      <div className="grid h-full place-items-center px-8 text-center">
+        <div>
+          <p className="text-[15px] font-medium text-[var(--ink-muted)]">
+            Nenhuma nota aberta
+          </p>
+          <p className="mt-1 text-[12.5px] text-[var(--ink-faint)]">
+            Escolha uma conversa na coluna à esquerda.
+          </p>
+        </div>
       </div>
     );
   }
 
   return (
-    <article className="max-w-3xl mx-auto px-8 py-10">
-      <header className="mb-8 pb-4 border-b border-zinc-200">
-        <h1 className="text-3xl font-semibold text-zinc-900">
+    <article className="mx-auto max-w-[76ch] px-9 py-8">
+      <header className="mb-7 border-b border-[var(--rule-soft)] pb-5">
+        <p className="meta-label">
+          {new Date(note.lastModified).toLocaleDateString("pt-BR", {
+            day: "2-digit",
+            month: "long",
+            year: "numeric",
+          })}
+        </p>
+        <h1 className="mt-1.5 text-[1.6rem] leading-[1.2] font-semibold tracking-tight text-balance text-[var(--ink)]">
           {highlight(note.name, query, searchMode)}
         </h1>
-        <p className="mt-1 text-xs text-zinc-500">
-          {note.path} · {new Date(note.lastModified).toLocaleString("pt-BR")}
-        </p>
+        <div className="mt-3 flex items-center gap-2">
+          <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--accent)]" />
+          <span className="truncate font-mono-ui text-[10px] text-[var(--ink-faint)]">
+            {note.path}
+          </span>
+        </div>
       </header>
       <div className="md-body">
         <ReactMarkdown remarkPlugins={[remarkGfm]} components={components}>

@@ -65,10 +65,7 @@ function highlightString(text: string, terms: string[]): React.ReactNode {
   for (const { start, end } of merged) {
     if (cursor < start) parts.push(text.slice(cursor, start));
     parts.push(
-      <mark
-        key={key++}
-        className="bg-yellow-200 text-zinc-900 rounded px-0.5"
-      >
+      <mark key={key++} className="hl">
         {text.slice(start, end)}
       </mark>
     );

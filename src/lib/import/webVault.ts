@@ -64,6 +64,19 @@ function putAll(db: IDBDatabase, notes: StoredNote[]): Promise<void> {
   });
 }
 
+/** Atualiza o conteúdo de uma nota já salva (por uuid). Usado ao carimbar o cabeçalho. */
+export async function updateWebVaultContent(
+  uuid: string,
+  content: string
+): Promise<boolean> {
+  const db = await openDb();
+  const stored = await getAll(db);
+  const found = stored.find((s) => s.uuid === uuid);
+  if (!found) return false;
+  await putAll(db, [{ ...found, content }]);
+  return true;
+}
+
 /** Quantidade de notas salvas neste navegador. */
 export async function webVaultCount(): Promise<number> {
   const db = await openDb();
