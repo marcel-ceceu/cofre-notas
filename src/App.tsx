@@ -10,7 +10,7 @@ import {
   saveLastVaultHandle,
   verifyReadPermission,
 } from "./lib/handleStore";
-import { filterNotes } from "./lib/search";
+import { useSearchResults } from "./lib/useSearchResults";
 import { NoteList } from "./components/NoteList";
 import { NoteViewer } from "./components/NoteViewer";
 import { SearchScrollRuler } from "./components/SearchScrollRuler";
@@ -150,7 +150,7 @@ export default function App() {
     }
   }
 
-  const matchCount = filterNotes(notes, query, searchPrefs).length;
+  const { matchedCount } = useSearchResults();
   const activeNote = notes.find((n) => n.path === activePath) ?? null;
 
   return (
@@ -286,7 +286,7 @@ export default function App() {
                 <span className="pane-title">Notas</span>
                 <span className="h-px flex-1 bg-[var(--rule)]" />
                 <span className="meta-label tabular-nums">
-                  {query ? `${matchCount}/${notes.length}` : notes.length}
+                  {query ? `${matchedCount}/${notes.length}` : notes.length}
                 </span>
               </div>
 
@@ -334,7 +334,7 @@ export default function App() {
         </span>
         {query && (
           <span className="shrink-0 text-[var(--accent)]">
-            filtro: “{query}” · {matchCount} resultado(s)
+            filtro: “{query}” · {matchedCount} resultado(s)
           </span>
         )}
         <span className="hidden shrink-0 items-center gap-1 sm:flex">

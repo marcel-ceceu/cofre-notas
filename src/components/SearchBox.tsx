@@ -1,25 +1,20 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useVaultStore } from "../store/vaultStore";
-import { queryNotes } from "../lib/search";
+import { useSearchResults } from "../lib/useSearchResults";
 import { runCopyFiles } from "../lib/export/runExport";
 import { DEFAULT_EXPORT_DEST_ABS } from "../lib/export/dest";
 import { isTauriRuntime } from "../lib/fileSystem.tauri";
 
 export function SearchBox() {
   const setQuery = useVaultStore((s) => s.setQuery);
-  const notes = useVaultStore((s) => s.notes);
   const query = useVaultStore((s) => s.query);
-  const sortKey = useVaultStore((s) => s.sortKey);
   const prefs = useVaultStore((s) => s.searchPrefs);
   const [local, setLocal] = useState("");
   const [quickBusy, setQuickBusy] = useState(false);
   const [quickMsg, setQuickMsg] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const filtered = useMemo(
-    () => queryNotes(notes, query, prefs, sortKey),
-    [notes, query, prefs, sortKey]
-  );
+  const { results: filtered } = useSearchResults();
 
   // Disparo: "auto" => debounce + mínimo de caracteres; "enter" => só no Enter.
   // Em ambos os modos, campo vazio restaura imediatamente a lista padrão.

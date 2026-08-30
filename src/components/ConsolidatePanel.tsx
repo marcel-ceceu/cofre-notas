@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { useVaultStore } from "../store/vaultStore";
-import { queryNotes } from "../lib/search";
+import { useSearchResults } from "../lib/useSearchResults";
 import { ConsolidateModal } from "./ConsolidateModal";
 
 type Source = "selection" | "search";
@@ -11,9 +11,6 @@ type Source = "selection" | "search";
  */
 export function ConsolidatePanel() {
   const notes = useVaultStore((s) => s.notes);
-  const query = useVaultStore((s) => s.query);
-  const sortKey = useVaultStore((s) => s.sortKey);
-  const prefs = useVaultStore((s) => s.searchPrefs);
   const selectedPaths = useVaultStore((s) => s.selectedPaths);
   const setSelectedPaths = useVaultStore((s) => s.setSelectedPaths);
   const setActivePath = useVaultStore((s) => s.setActivePath);
@@ -21,10 +18,7 @@ export function ConsolidatePanel() {
   const [source, setSource] = useState<Source>("selection");
   const [open, setOpen] = useState(false);
 
-  const searchNotes = useMemo(
-    () => queryNotes(notes, query, prefs, sortKey),
-    [notes, query, prefs, sortKey]
-  );
+  const { results: searchNotes } = useSearchResults();
 
   const selectedNotes = useMemo(() => {
     const set = new Set(selectedPaths);

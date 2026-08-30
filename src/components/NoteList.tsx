@@ -1,11 +1,8 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useVirtualizer } from "@tanstack/react-virtual";
 import { useVaultStore } from "../store/vaultStore";
-import {
-  queryNotes,
-  searchTerms,
-  buildSnippet,
-  countOccurrences,
-} from "../lib/search";
+import { useSearchResults } from "../lib/useSearchResults";
+import { buildSnippet, countOccurrences } from "../lib/search";
 import { highlight } from "../lib/highlight";
 import { formatResults, copyToClipboard } from "../lib/copyResults";
 import { runCopyFiles } from "../lib/export/runExport";
@@ -13,8 +10,10 @@ import { DEFAULT_EXPORT_DEST_ABS } from "../lib/export/dest";
 import { isTauriRuntime } from "../lib/fileSystem.tauri";
 import { ResultContextMenu } from "./ResultContextMenu";
 
+const DATE_FMT = new Intl.DateTimeFormat("pt-BR");
+
 function formatDate(ms: number): string {
-  return new Date(ms).toLocaleDateString("pt-BR");
+  return DATE_FMT.format(ms);
 }
 
 type Props = {
@@ -40,42 +39,39 @@ export function NoteList({ onRequestSync }: Props) {
 
   const selected = useMemo(() => new Set(selectedPaths), [selectedPaths]);
 
-  const visible = useMemo(
-    () => queryNotes(notes, query, prefs, sortKey),
-    [notes, sortKey, query, prefs]
-  );
+  const { results, terms } = useSearchResults();
 
-  const terms = useMemo(
-    () => searchTerms(query, prefs.searchMode),
-    [query, prefs.searchMode]
-  );
+  // Lista virtualizada: só as linhas visíveis (+overscan) existem no DOM, e
+  // snippet/contagem são computados apenas para elas — não para o cofre todo.
+  const parentRef = useRef<HTMLDivElement>(null);
+  const virtualizer = useVirtualizer({
+    count: results.length,
+    getScrollElement: () => parentRef.current,
+    estimateSize: () => (terms.length ? 78 : 48),
+    overscan: 8,
+    getItemKey: (i) => results[i].path,
+  });
 
-  // snippet + contagem por item (só quando há busca ativa)
-  const rows = useMemo(
-    () =>
-      visible.map((n) => ({
-        note: n,
-        count: terms.length ? countOccurrences(n, terms) : 0,
-        snippet: terms.length ? buildSnippet(n.content, terms) : "",
-      })),
-    [visible, terms]
-  );
+  // Volta ao topo ao mudar a consulta/ordenação (o remount antigo fazia isso).
+  useEffect(() => {
+    virtualizer.scrollToOffset(0);
+  }, [query, sortKey, virtualizer]);
 
   // Mantém a seleção coerente com o que está visível (poda ao mudar a busca/ordem).
   useEffect(() => {
-    const visiblePaths = new Set(rows.map((r) => r.note.path));
+    const visiblePaths = new Set(results.map((n) => n.path));
     const prev = useVaultStore.getState().selectedPaths;
     const next = prev.filter((p) => visiblePaths.has(p));
     if (next.length !== prev.length) setSelectedPaths(next);
     setAnchor((cur) => (cur && visiblePaths.has(cur) ? cur : null));
-  }, [rows, setSelectedPaths]);
+  }, [results, setSelectedPaths]);
 
   function onItemClick(e: React.MouseEvent, index: number, path: string) {
     if (e.shiftKey && anchor) {
-      const ai = rows.findIndex((r) => r.note.path === anchor);
+      const ai = results.findIndex((n) => n.path === anchor);
       if (ai !== -1) {
         const [lo, hi] = ai < index ? [ai, index] : [index, ai];
-        setSelectedPaths(rows.slice(lo, hi + 1).map((r) => r.note.path));
+        setSelectedPaths(results.slice(lo, hi + 1).map((n) => n.path));
         return;
       }
     }
@@ -103,26 +99,22 @@ export function NoteList({ onRequestSync }: Props) {
   }
 
   async function copySelectedPaths() {
-    const ordered = rows
-      .filter((r) => selected.has(r.note.path))
-      .map((r) => r.note);
+    const ordered = results.filter((n) => selected.has(n.path));
     await copyToClipboard(formatResults(ordered, true, "none", "none"));
   }
 
   /** Envia a seleção atual ao Supabase (escopo pontual, via modal de sync). */
   function sendSelectedToSupabase() {
-    const paths = rows
-      .filter((r) => selected.has(r.note.path))
-      .map((r) => r.note.path);
+    const paths = results
+      .filter((n) => selected.has(n.path))
+      .map((n) => n.path);
     if (!paths.length) return;
     useVaultStore.getState().setSyncScope(paths);
     onRequestSync();
   }
 
   async function quickExportSelected() {
-    const ordered = rows
-      .filter((r) => selected.has(r.note.path))
-      .map((r) => r.note);
+    const ordered = results.filter((n) => selected.has(n.path));
     if (!isTauriRuntime() || !ordered.length || exportBusy) return;
     setExportBusy(true);
     setExportMsg(null);
@@ -153,7 +145,7 @@ export function NoteList({ onRequestSync }: Props) {
     );
   }
 
-  if (!visible.length) {
+  if (!results.length) {
     return (
       <p className="px-4 py-10 text-center text-[12.5px] text-[var(--ink-muted)]">
         Nada corresponde a “{query}”.
@@ -199,74 +191,94 @@ export function NoteList({ onRequestSync }: Props) {
         </div>
       )}
 
-      <ul className="flex-1 overflow-y-auto pb-2 select-none">
-        {rows.map(({ note: n, count, snippet }, index) => {
-          const isSel = selected.has(n.path);
-          const isActive = activePath === n.path;
-          return (
-            <li
-              key={n.path}
-              className="row-in"
-              style={{ animationDelay: `${Math.min(index, 14) * 22}ms` }}
-            >
-              <button
-                onClick={(e) => onItemClick(e, index, n.path)}
-                onContextMenu={(e) => onItemContextMenu(e, n.path)}
-                className={`relative w-full border-b border-[var(--rule-soft)] py-1.5 pr-2.5 pl-3 text-left transition-colors duration-100 ${
-                  isSel
-                    ? "bg-[var(--selected)]"
-                    : isActive
-                      ? "bg-[var(--accent-soft)]"
-                      : "hover:bg-[var(--surface-tertiary)]"
-                }`}
+      <div
+        ref={parentRef}
+        className="flex-1 overflow-y-auto pb-2 select-none"
+      >
+        <ul
+          style={{
+            height: virtualizer.getTotalSize(),
+            position: "relative",
+          }}
+        >
+          {virtualizer.getVirtualItems().map((vi) => {
+            const n = results[vi.index];
+            const count = terms.length ? countOccurrences(n, terms) : 0;
+            const snippet = terms.length ? buildSnippet(n.content, terms) : "";
+            const isSel = selected.has(n.path);
+            const isActive = activePath === n.path;
+            return (
+              <li
+                key={n.path}
+                data-index={vi.index}
+                ref={virtualizer.measureElement}
+                style={{
+                  position: "absolute",
+                  top: 0,
+                  left: 0,
+                  width: "100%",
+                  transform: `translateY(${vi.start}px)`,
+                }}
               >
-                <span
-                  className={`absolute inset-y-0 left-0 w-[2px] transition-colors ${
-                    isActive
-                      ? "bg-[var(--accent)]"
-                      : isSel
-                        ? "bg-[var(--accent-ring)]"
-                        : "bg-transparent"
-                  }`}
-                />
-                <div
-                  className={`truncate text-[12.5px] leading-snug ${
-                    isActive
-                      ? "font-semibold text-[var(--ink)]"
-                      : "font-medium text-[#2b3237]"
+                <button
+                  onClick={(e) => onItemClick(e, vi.index, n.path)}
+                  onContextMenu={(e) => onItemContextMenu(e, n.path)}
+                  className={`relative w-full border-b border-[var(--rule-soft)] py-1.5 pr-2.5 pl-3 text-left transition-colors duration-100 ${
+                    isSel
+                      ? "bg-[var(--selected)]"
+                      : isActive
+                        ? "bg-[var(--accent-soft)]"
+                        : "hover:bg-[var(--surface-tertiary)]"
                   }`}
                 >
-                  {highlight(n.name, query, prefs.searchMode)}
-                </div>
-
-                {terms.length > 0 && snippet && (
-                  <div className="mt-0.5 line-clamp-2 text-[11.5px] leading-snug text-[var(--ink-muted)]">
-                    {highlight(snippet, query, prefs.searchMode)}
+                  <span
+                    className={`absolute inset-y-0 left-0 w-[2px] transition-colors ${
+                      isActive
+                        ? "bg-[var(--accent)]"
+                        : isSel
+                          ? "bg-[var(--accent-ring)]"
+                          : "bg-transparent"
+                    }`}
+                  />
+                  <div
+                    className={`truncate text-[12.5px] leading-snug ${
+                      isActive
+                        ? "font-semibold text-[var(--ink)]"
+                        : "font-medium text-[#2b3237]"
+                    }`}
+                  >
+                    {highlight(n.name, query, prefs.searchMode)}
                   </div>
-                )}
 
-                <div className="mt-1 flex items-center gap-1.5">
-                  {terms.length > 0 && (
-                    <span
-                      className="rounded-[3px] bg-[var(--accent)] px-1 py-px font-mono-ui text-[9px] font-medium text-white"
-                      title="ocorrências do termo nesta nota"
-                    >
-                      {count}×
-                    </span>
+                  {terms.length > 0 && snippet && (
+                    <div className="mt-0.5 line-clamp-2 text-[11.5px] leading-snug text-[var(--ink-muted)]">
+                      {highlight(snippet, query, prefs.searchMode)}
+                    </div>
                   )}
-                  <span className="meta-label" title="data da conversa original">
-                    {formatDate(n.createdAt)}
-                  </span>
-                  <span className="text-[var(--rule)]">/</span>
-                  <span className="meta-label" title="data de importação">
-                    imp. {formatDate(n.lastModified)}
-                  </span>
-                </div>
-              </button>
-            </li>
-          );
-        })}
-      </ul>
+
+                  <div className="mt-1 flex items-center gap-1.5">
+                    {terms.length > 0 && (
+                      <span
+                        className="rounded-[3px] bg-[var(--accent)] px-1 py-px font-mono-ui text-[9px] font-medium text-white"
+                        title="ocorrências do termo nesta nota"
+                      >
+                        {count}×
+                      </span>
+                    )}
+                    <span className="meta-label" title="data da conversa original">
+                      {formatDate(n.createdAt)}
+                    </span>
+                    <span className="text-[var(--rule)]">/</span>
+                    <span className="meta-label" title="data de importação">
+                      imp. {formatDate(n.lastModified)}
+                    </span>
+                  </div>
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+      </div>
 
       {menu && (
         <ResultContextMenu

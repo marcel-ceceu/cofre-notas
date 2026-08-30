@@ -30,7 +30,11 @@ function shouldSkipBlock(children: React.ReactNode): boolean {
   return SKIP_BLOCK_PATTERNS.some((re) => re.test(text));
 }
 
-export function NoteViewer() {
+/**
+ * memo: o viewer assina a store sozinho (sem props) — re-renders do App
+ * (seleção, arraste da sidebar, modais) não devem re-parsear o markdown.
+ */
+export const NoteViewer = React.memo(function NoteViewer() {
   const notes = useVaultStore((s) => s.notes);
   const activePath = useVaultStore((s) => s.activePath);
   const query = useVaultStore((s) => s.query);
@@ -113,4 +117,4 @@ export function NoteViewer() {
       </div>
     </article>
   );
-}
+});

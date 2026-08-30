@@ -24,10 +24,13 @@ export async function pickVaultDirectoryTauri(): Promise<TauriDirHandle> {
 export async function readVaultTauri(
   handle: TauriDirHandle
 ): Promise<Note[]> {
-  console.log("[cofre] lendo cofre em:", handle.path);
+  const t0 = performance.now();
   const notes: Note[] = [];
   await walk(handle.path, "", notes);
-  console.log(`[cofre] varredura concluida: ${notes.length} .md encontrados`);
+  // Log único de medição — gate para o comando Rust read_vault (Fase 3 do plano).
+  console.log(
+    `[cofre] readVault: ${Math.round(performance.now() - t0)}ms / ${notes.length} notas (${handle.path})`
+  );
   return notes;
 }
 
@@ -39,7 +42,6 @@ async function walk(
   let entries: Awaited<ReturnType<typeof readDir>>;
   try {
     entries = await readDir(absDir);
-    console.log(`[cofre] readDir(${absDir}) -> ${entries.length} entries`);
   } catch (e) {
     console.error(`[cofre] FALHA readDir(${absDir}):`, e);
     throw new Error(
@@ -50,10 +52,6 @@ async function walk(
   for (const entry of entries) {
     const absChild = joinPath(absDir, entry.name);
     const relChild = relPrefix ? `${relPrefix}/${entry.name}` : entry.name;
-
-    console.log(
-      `[cofre]   entry: name=${entry.name} isDir=${entry.isDirectory} isFile=${entry.isFile}`
-    );
 
     if (entry.isDirectory) {
       await walk(absChild, relChild, out);
@@ -74,7 +72,6 @@ async function walk(
           lastModified: mtime,
           createdAt: parseCreatedAt(content, name, mtime),
         });
-        console.log(`[cofre]   + ${relChild} (${content.length} chars)`);
       } catch (e) {
         console.error(`[cofre] FALHA lendo ${absChild}:`, e);
       }

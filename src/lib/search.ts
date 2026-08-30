@@ -59,6 +59,9 @@ export function parseSearchQuery(query: string): string[] {
 // token: [-] [title:|body:] ("frase" | palavra)
 const TOKEN_RE = /(-)?(?:(title|body):)?(?:"([^"]*)"|(\S+))/gi;
 
+/** Cache da última consulta interpretada — parseQuery roda por linha da lista e por bloco realçado do viewer. */
+let pqCache: { query: string; mode: SearchMode; pq: ParsedQuery } | null = null;
+
 /**
  * Interpreta a consulta com operadores (apenas no modo "tokens"):
  * - espaço = E   |   OR / OU (MAIÚSCULO) = OU   |   -termo = excluir
@@ -66,6 +69,15 @@ const TOKEN_RE = /(-)?(?:(title|body):)?(?:"([^"]*)"|(\S+))/gi;
  * No modo "substring" a consulta inteira é um termo literal único.
  */
 export function parseQuery(query: string, mode: SearchMode): ParsedQuery {
+  if (pqCache && pqCache.query === query && pqCache.mode === mode) {
+    return pqCache.pq;
+  }
+  const pq = parseQueryUncached(query, mode);
+  pqCache = { query, mode, pq };
+  return pq;
+}
+
+function parseQueryUncached(query: string, mode: SearchMode): ParsedQuery {
   const trimmed = query.trim();
   if (!trimmed) return [];
   if (mode === "substring") {
@@ -135,6 +147,22 @@ function groupMatches(
   return true;
 }
 
+/**
+ * Cache de normalização por nota — rebaixar o corpo inteiro custa MB por scan.
+ * WeakMap: cobre todos os loaders (tauri/web/IndexedDB) sem mudar o tipo Note,
+ * e é liberado pelo GC junto com o array antigo em cada reload do cofre.
+ */
+const lowerCache = new WeakMap<Note, { title: string; body: string }>();
+
+function lowered(note: Note): { title: string; body: string } {
+  let c = lowerCache.get(note);
+  if (!c) {
+    c = { title: note.name.toLowerCase(), body: note.content.toLowerCase() };
+    lowerCache.set(note, c);
+  }
+  return c;
+}
+
 /** Casa a nota contra a consulta estruturada (OU entre grupos, E dentro do grupo). */
 export function noteMatchesQuery(
   note: Note,
@@ -142,20 +170,8 @@ export function noteMatchesQuery(
   includeBody: boolean
 ): boolean {
   if (pq.length === 0) return true;
-  const title = note.name.toLowerCase();
-  const body = note.content.toLowerCase();
+  const { title, body } = lowered(note);
   return pq.some((g) => groupMatches(g, title, body, includeBody));
-}
-
-/** Apenas as notas que casam — sem ordenar, sem limitar (usado para contagem). */
-export function filterNotes(
-  notes: Note[],
-  query: string,
-  prefs: SearchPrefs
-): Note[] {
-  const pq = parseQuery(query, prefs.searchMode);
-  if (pq.length === 0) return notes;
-  return notes.filter((n) => noteMatchesQuery(n, pq, prefs.includeBody));
 }
 
 /** `term` ocorre no início de alguma palavra de `text`? */
@@ -187,8 +203,8 @@ export function relevanceScore(
   includeBody: boolean
 ): number {
   if (terms.length === 0) return 0;
-  const title = note.name.toLowerCase();
-  const body = includeBody ? note.content.toLowerCase() : "";
+  const { title, body: loweredBody } = lowered(note);
+  const body = includeBody ? loweredBody : "";
   const phrase = terms.join(" ");
 
   let score = 0;
@@ -216,18 +232,24 @@ export function relevanceScore(
   return score;
 }
 
+function countIn(hay: string, term: string): number {
+  let total = 0;
+  let i = hay.indexOf(term);
+  while (i !== -1) {
+    total++;
+    i = hay.indexOf(term, i + term.length);
+  }
+  return total;
+}
+
 /** Total de ocorrências dos termos no título + corpo (case-insensitive). */
 export function countOccurrences(note: Note, terms: string[]): number {
   if (terms.length === 0) return 0;
-  const hay = `${note.name}\n${note.content}`.toLowerCase();
+  const { title, body } = lowered(note);
   let total = 0;
   for (const t of terms) {
     if (!t) continue;
-    let i = hay.indexOf(t);
-    while (i !== -1) {
-      total++;
-      i = hay.indexOf(t, i + t.length);
-    }
+    total += countIn(title, t) + countIn(body, t);
   }
   return total;
 }
@@ -266,16 +288,41 @@ export function buildSnippet(
   return snip;
 }
 
+/** Resultado único da busca — compartilhado por lista, contadores, toolbar e consolidação. */
+export type SearchResult = {
+  /** Pós-ordenação e pós-resultLimit — o que a lista mostra. */
+  results: Note[];
+  /** Notas que casam ANTES do resultLimit — contadores do App/status bar. */
+  matchedCount: number;
+  /** Termos positivos da consulta — realce, snippet e contagem. */
+  terms: string[];
+};
+
+let lastArgs: readonly [Note[], string, SearchPrefs, SortKey] | null = null;
+let lastResult: SearchResult | null = null;
+
 /**
  * Pipeline completo e único — filtra, ordena (relevância/ocorrências quando há
- * termo) e aplica o limite. Mesma lógica em todos os pontos que consultam notas.
+ * termo) e aplica o limite, com cache da última chamada por identidade dos
+ * argumentos. Funciona porque a store sempre SUBSTITUI `notes`/`searchPrefs`
+ * por referências novas; mutação in-place invalidaria o cache silenciosamente.
  */
-export function queryNotes(
+export function runSearch(
   notes: Note[],
   query: string,
   prefs: SearchPrefs,
   sortKey: SortKey
-): Note[] {
+): SearchResult {
+  if (
+    lastArgs &&
+    lastArgs[0] === notes &&
+    lastArgs[1] === query &&
+    lastArgs[2] === prefs &&
+    lastArgs[3] === sortKey
+  ) {
+    return lastResult!;
+  }
+
   const pq = parseQuery(query, prefs.searchMode);
   const terms = positiveTermsOf(pq);
   const matched = pq.length
@@ -301,5 +348,20 @@ export function queryNotes(
     ordered = sortNotes(matched, sortKey);
   }
 
-  return prefs.resultLimit > 0 ? ordered.slice(0, prefs.resultLimit) : ordered;
+  const results =
+    prefs.resultLimit > 0 ? ordered.slice(0, prefs.resultLimit) : ordered;
+
+  lastArgs = [notes, query, prefs, sortKey];
+  lastResult = { results, matchedCount: matched.length, terms };
+  return lastResult;
+}
+
+/** Compat: mesmo pipeline (com cache), devolvendo só o array final. */
+export function queryNotes(
+  notes: Note[],
+  query: string,
+  prefs: SearchPrefs,
+  sortKey: SortKey
+): Note[] {
+  return runSearch(notes, query, prefs, sortKey).results;
 }

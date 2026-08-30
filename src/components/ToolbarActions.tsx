@@ -1,6 +1,5 @@
-import { useMemo, useState } from "react";
-import { useVaultStore } from "../store/vaultStore";
-import { queryNotes } from "../lib/search";
+import { useState } from "react";
+import { useSearchResults } from "../lib/useSearchResults";
 import { CopyResultsModal } from "./CopyResultsModal";
 import { SearchSettingsModal } from "./SearchSettingsModal";
 import { ConsolidateModal } from "./ConsolidateModal";
@@ -10,19 +9,11 @@ import { ConsolidateModal } from "./ConsolidateModal";
  * Operam sempre sobre o conjunto atualmente filtrado na barra lateral.
  */
 export function ToolbarActions() {
-  const notes = useVaultStore((s) => s.notes);
-  const query = useVaultStore((s) => s.query);
-  const sortKey = useVaultStore((s) => s.sortKey);
-  const prefs = useVaultStore((s) => s.searchPrefs);
-
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [exportOpen, setExportOpen] = useState(false);
   const [copyOpen, setCopyOpen] = useState(false);
 
-  const filtered = useMemo(
-    () => queryNotes(notes, query, prefs, sortKey),
-    [notes, query, prefs, sortKey]
-  );
+  const { results: filtered } = useSearchResults();
 
   const noResults = filtered.length === 0;
 
