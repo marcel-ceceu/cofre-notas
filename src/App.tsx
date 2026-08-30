@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import { useVaultStore } from "./store/vaultStore";
 import {
   pickVaultDirectory,
@@ -17,15 +17,34 @@ import { SearchScrollRuler } from "./components/SearchScrollRuler";
 import { SortControl } from "./components/SortControl";
 import { SearchBox } from "./components/SearchBox";
 import { UpdateBanner } from "./components/UpdateBanner";
-import { ImportClaudeModal } from "./components/ImportClaudeModal";
-import { SearchSettingsModal } from "./components/SearchSettingsModal";
 import { ToolbarActions } from "./components/ToolbarActions";
 import { ActivityRail, type RailView } from "./components/ActivityRail";
 import { ImportPanel } from "./components/ImportPanel";
 import { ConsolidatePanel } from "./components/ConsolidatePanel";
-import { SyncSupabaseModal } from "./components/SyncSupabaseModal";
-import { PilotoMemoriaModal } from "./components/PilotoMemoriaModal";
 import { useSidebarWidth } from "./lib/useSidebarWidth";
+
+// Modais pesados fora do chunk de boot (Supabase, fflate, shell…): só baixam
+// e parseiam no primeiro uso. O shim `.then` preserva os named exports.
+const SyncSupabaseModal = lazy(() =>
+  import("./components/SyncSupabaseModal").then((m) => ({
+    default: m.SyncSupabaseModal,
+  }))
+);
+const PilotoMemoriaModal = lazy(() =>
+  import("./components/PilotoMemoriaModal").then((m) => ({
+    default: m.PilotoMemoriaModal,
+  }))
+);
+const ImportClaudeModal = lazy(() =>
+  import("./components/ImportClaudeModal").then((m) => ({
+    default: m.ImportClaudeModal,
+  }))
+);
+const SearchSettingsModal = lazy(() =>
+  import("./components/SearchSettingsModal").then((m) => ({
+    default: m.SearchSettingsModal,
+  }))
+);
 
 export default function App() {
   const notes = useVaultStore((s) => s.notes);
@@ -344,30 +363,32 @@ export default function App() {
         </span>
       </footer>
 
-      {syncOpen && (
-        <SyncSupabaseModal
-          onClose={() => {
-            setSyncOpen(false);
-            setSyncScope(null);
-          }}
-          onStamped={handleReloadVault}
-        />
-      )}
+      <Suspense fallback={null}>
+        {syncOpen && (
+          <SyncSupabaseModal
+            onClose={() => {
+              setSyncOpen(false);
+              setSyncScope(null);
+            }}
+            onStamped={handleReloadVault}
+          />
+        )}
 
-      {pilotoOpen && (
-        <PilotoMemoriaModal onClose={() => setPilotoOpen(false)} />
-      )}
+        {pilotoOpen && (
+          <PilotoMemoriaModal onClose={() => setPilotoOpen(false)} />
+        )}
 
-      {settingsOpen && (
-        <SearchSettingsModal onClose={() => setSettingsOpen(false)} />
-      )}
+        {settingsOpen && (
+          <SearchSettingsModal onClose={() => setSettingsOpen(false)} />
+        )}
 
-      {importOpen && (
-        <ImportClaudeModal
-          onClose={() => setImportOpen(false)}
-          onImported={handleImported}
-        />
-      )}
+        {importOpen && (
+          <ImportClaudeModal
+            onClose={() => setImportOpen(false)}
+            onImported={handleImported}
+          />
+        )}
+      </Suspense>
     </div>
   );
 }

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { PilotoIcon } from "./icons";
 import { isTauriRuntime } from "../lib/fileSystem.tauri";
 import {
   defaultScriptPath,
@@ -17,26 +18,6 @@ type Stage = "intro" | "running" | "done";
 
 const SCRIPT_PREF_KEY = "cofre.piloto.scriptPath";
 const MAX_LINES = 600;
-
-/** Ícone do rail e do cabeçalho — cérebro/memória destilada. */
-export function PilotoIcon({ className = "" }: { className?: string }) {
-  return (
-    <svg
-      viewBox="0 0 20 20"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.5"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      className={className}
-      aria-hidden
-    >
-      <path d="M10 3.25c-2 0-3.25 1.2-3.25 2.6-1.3.3-2 1.3-2 2.4 0 .8.35 1.45.9 1.85-.3.4-.45.9-.45 1.4 0 1.5 1.25 2.5 2.9 2.5.55 0 1-.1 1.4-.3v2.05" />
-      <path d="M10 3.25c2 0 3.25 1.2 3.25 2.6 1.3.3 2 1.3 2 2.4 0 .8-.35 1.45-.9 1.85.3.4.45.9.45 1.4 0 1.5-1.25 2.5-2.9 2.5-.55 0-1-.1-1.4-.3v2.05" />
-      <path d="M10 3.25v12.5" />
-    </svg>
-  );
-}
 
 /**
  * Piloto de memória: recorta as conversas escolhidas em memórias auditáveis

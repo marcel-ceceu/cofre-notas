@@ -35,10 +35,16 @@ export function SearchScrollRuler({ scrollRef, deps }: Props) {
     }
     const rootTop = root.getBoundingClientRect().top + root.scrollTop;
     const next: Tick[] = [];
+    // Agrupa marks a menos de 4px na régua: teto natural de ~viewH/4 traços no
+    // DOM (uma conversa longa pode ter centenas de marks empilhados no mesmo y).
+    const buckets = new Set<number>();
     marks.forEach((el) => {
       const top = el.getBoundingClientRect().top + root.scrollTop - rootTop;
-      const y = (top / scrollH) * viewH;
-      next.push({ top: Math.max(0, Math.min(viewH - 3, y)), el });
+      const y = Math.max(0, Math.min(viewH - 3, (top / scrollH) * viewH));
+      const bucket = Math.round(y / 4);
+      if (buckets.has(bucket)) return;
+      buckets.add(bucket);
+      next.push({ top: y, el });
     });
     setTicks(next);
   }, [scrollRef]);

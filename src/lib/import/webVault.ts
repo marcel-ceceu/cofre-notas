@@ -5,7 +5,8 @@
  * (mesmo pipeline puro do desktop: fflate → parser → sem cortesias) e ficam
  * salvas no IndexedDB, offline. Anti-duplicata natural: a chave é o uuid.
  */
-import { extractConversationsJson } from "./zip";
+// "./zip" (fflate) é importado DINAMICAMENTE dentro das funções de importação —
+// este módulo entra no grafo de boot via fileSystem.ts e não pode arrastar o fflate.
 import {
   parseConversations,
   dedupeByUuid,
@@ -112,6 +113,7 @@ export async function loadWebVaultNotes(): Promise<Note[]> {
 /** Mesmo critério do desktop: o zip precisa conter conversations.json. */
 export async function isCompatibleClaudeZipFile(f: File): Promise<boolean> {
   try {
+    const { extractConversationsJson } = await import("./zip");
     const bytes = new Uint8Array(await f.arrayBuffer());
     return extractConversationsJson(bytes).length > 0;
   } catch {
@@ -127,6 +129,7 @@ export async function importClaudeZipsWeb(
   files: File[],
   onProgress?: (p: ImportProgress) => void
 ): Promise<ImportResult> {
+  const { extractConversationsJson } = await import("./zip");
   const all: ReturnType<typeof parseConversations> = [];
   let read = 0;
 

@@ -1,8 +1,16 @@
-import { useState } from "react";
+import { lazy, Suspense, useState } from "react";
 import { useSearchResults } from "../lib/useSearchResults";
 import { CopyResultsModal } from "./CopyResultsModal";
-import { SearchSettingsModal } from "./SearchSettingsModal";
-import { ConsolidateModal } from "./ConsolidateModal";
+
+// Fora do chunk de boot — ver comentário no App.tsx.
+const SearchSettingsModal = lazy(() =>
+  import("./SearchSettingsModal").then((m) => ({
+    default: m.SearchSettingsModal,
+  }))
+);
+const ConsolidateModal = lazy(() =>
+  import("./ConsolidateModal").then((m) => ({ default: m.ConsolidateModal }))
+);
 
 /**
  * Ações de ferramenta na barra do topo — posição padrão de app.
@@ -95,12 +103,17 @@ export function ToolbarActions() {
       {copyOpen && (
         <CopyResultsModal notes={filtered} onClose={() => setCopyOpen(false)} />
       )}
-      {settingsOpen && (
-        <SearchSettingsModal onClose={() => setSettingsOpen(false)} />
-      )}
-      {exportOpen && (
-        <ConsolidateModal notes={filtered} onClose={() => setExportOpen(false)} />
-      )}
+      <Suspense fallback={null}>
+        {settingsOpen && (
+          <SearchSettingsModal onClose={() => setSettingsOpen(false)} />
+        )}
+        {exportOpen && (
+          <ConsolidateModal
+            notes={filtered}
+            onClose={() => setExportOpen(false)}
+          />
+        )}
+      </Suspense>
     </>
   );
 }

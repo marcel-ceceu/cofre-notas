@@ -1,6 +1,5 @@
 import type { ReactNode } from "react";
-import { SyncIcon } from "./SyncSupabaseModal";
-import { PilotoIcon } from "./PilotoMemoriaModal";
+import { SyncIcon, PilotoIcon } from "./icons";
 
 export type RailView = "notes" | "import" | "consolidate";
 

@@ -1,7 +1,11 @@
-import { useMemo, useState } from "react";
+import { lazy, Suspense, useMemo, useState } from "react";
 import { useVaultStore } from "../store/vaultStore";
 import { useSearchResults } from "../lib/useSearchResults";
-import { ConsolidateModal } from "./ConsolidateModal";
+
+// Fora do chunk de boot — ver comentário no App.tsx.
+const ConsolidateModal = lazy(() =>
+  import("./ConsolidateModal").then((m) => ({ default: m.ConsolidateModal }))
+);
 
 type Source = "selection" | "search";
 
@@ -138,9 +142,11 @@ export function ConsolidatePanel() {
         )}
       </div>
 
-      {open && (
-        <ConsolidateModal notes={target} onClose={() => setOpen(false)} />
-      )}
+      <Suspense fallback={null}>
+        {open && (
+          <ConsolidateModal notes={target} onClose={() => setOpen(false)} />
+        )}
+      </Suspense>
     </div>
   );
 }

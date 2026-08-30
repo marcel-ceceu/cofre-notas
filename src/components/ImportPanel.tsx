@@ -1,7 +1,11 @@
-import { useState } from "react";
+import { lazy, Suspense, useState } from "react";
 import { useVaultStore } from "../store/vaultStore";
 import { isTauriRuntime, type TauriDirHandle } from "../lib/fileSystem.tauri";
-import { ImportClaudeModal } from "./ImportClaudeModal";
+
+// Fora do chunk de boot — ver comentário no App.tsx.
+const ImportClaudeModal = lazy(() =>
+  import("./ImportClaudeModal").then((m) => ({ default: m.ImportClaudeModal }))
+);
 
 type Props = {
   onImported: (dest: string) => void;
@@ -102,15 +106,17 @@ export function ImportPanel({ onImported }: Props) {
         </dl>
       </div>
 
-      {open && (
-        <ImportClaudeModal
-          onClose={() => setOpen(false)}
-          onImported={(dest) => {
-            setOpen(false);
-            onImported(dest);
-          }}
-        />
-      )}
+      <Suspense fallback={null}>
+        {open && (
+          <ImportClaudeModal
+            onClose={() => setOpen(false)}
+            onImported={(dest) => {
+              setOpen(false);
+              onImported(dest);
+            }}
+          />
+        )}
+      </Suspense>
     </div>
   );
 }
