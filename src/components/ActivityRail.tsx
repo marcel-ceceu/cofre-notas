@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { SyncIcon } from "./SyncSupabaseModal";
+import { PilotoIcon } from "./PilotoMemoriaModal";
 
 export type RailView = "notes" | "import" | "consolidate";
 
@@ -81,6 +82,7 @@ type Props = {
   onChange: (view: RailView) => void;
   onOpenSettings: () => void;
   onOpenSync: () => void;
+  onOpenPiloto: () => void;
   /** Quantidade selecionada — badge no ícone de consolidação. */
   selectedCount: number;
 };
@@ -94,6 +96,7 @@ export function ActivityRail({
   onChange,
   onOpenSettings,
   onOpenSync,
+  onOpenPiloto,
   selectedCount,
 }: Props) {
   return (
@@ -122,6 +125,16 @@ export function ActivityRail({
       })}
 
       <span className="my-1 h-px w-6 bg-[var(--rule)]" />
+
+      <button
+        type="button"
+        onClick={onOpenPiloto}
+        title="Piloto de memória — destilar conversas escolhidas em memórias auditáveis"
+        aria-label="Piloto de memória"
+        className="rail-btn"
+      >
+        <PilotoIcon className="h-[19px] w-[19px]" />
+      </button>
 
       <button
         type="button"

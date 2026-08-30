@@ -6,6 +6,7 @@ pub fn run() {
     .plugin(tauri_plugin_process::init())
     .plugin(tauri_plugin_http::init())
     .plugin(tauri_plugin_opener::init())
+    .plugin(tauri_plugin_shell::init())
     .plugin(tauri_plugin_store::Builder::new().build());
 
   // O updater só existe no desktop (não há equivalente em Android/iOS).

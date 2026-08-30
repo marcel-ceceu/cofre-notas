@@ -24,6 +24,7 @@ import { ActivityRail, type RailView } from "./components/ActivityRail";
 import { ImportPanel } from "./components/ImportPanel";
 import { ConsolidatePanel } from "./components/ConsolidatePanel";
 import { SyncSupabaseModal } from "./components/SyncSupabaseModal";
+import { PilotoMemoriaModal } from "./components/PilotoMemoriaModal";
 import { useSidebarWidth } from "./lib/useSidebarWidth";
 
 export default function App() {
@@ -43,6 +44,7 @@ export default function App() {
   const [importOpen, setImportOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [syncOpen, setSyncOpen] = useState(false);
+  const [pilotoOpen, setPilotoOpen] = useState(false);
   const [railView, setRailView] = useState<RailView>("notes");
   const { width: sidebarWidth, onHandleMouseDown } = useSidebarWidth();
   const viewerScrollRef = useRef<HTMLElement>(null);
@@ -265,6 +267,7 @@ export default function App() {
             setSyncScope(null);
             setSyncOpen(true);
           }}
+          onOpenPiloto={() => setPilotoOpen(true)}
           selectedCount={selectedPaths.length}
         />
 
@@ -349,6 +352,10 @@ export default function App() {
           }}
           onStamped={handleReloadVault}
         />
+      )}
+
+      {pilotoOpen && (
+        <PilotoMemoriaModal onClose={() => setPilotoOpen(false)} />
       )}
 
       {settingsOpen && (

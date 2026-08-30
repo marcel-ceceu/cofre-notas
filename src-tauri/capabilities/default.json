@@ -21,6 +21,16 @@
       "identifier": "http:default",
       "allow": [{ "url": "https://api.anthropic.com/*" }]
     },
+    {
+      "identifier": "shell:allow-execute",
+      "allow": [
+        {
+          "name": "piloto-memoria",
+          "cmd": "pwsh",
+          "args": true
+        }
+      ]
+    },
     "fs:default",
     "fs:allow-read-text-file",
     "fs:allow-read-file",
