@@ -1,3 +1,4 @@
+import { invoke } from "@tauri-apps/api/core";
 import { open } from "@tauri-apps/plugin-dialog";
 import { readDir, readTextFile, stat } from "@tauri-apps/plugin-fs";
 import type { Note } from "./fileSystem";
@@ -21,17 +22,47 @@ export async function pickVaultDirectoryTauri(): Promise<TauriDirHandle> {
   return { kind: "tauri", path: selected };
 }
 
+type RawVaultNote = {
+  path: string;
+  name: string;
+  content: string;
+  mtimeMs: number;
+};
+type RawVaultResult = { notes: RawVaultNote[]; errors: string[] };
+
 export async function readVaultTauri(
   handle: TauriDirHandle
 ): Promise<Note[]> {
   const t0 = performance.now();
-  const notes: Note[] = [];
-  await walk(handle.path, "", notes);
-  // Log único de medição — gate para o comando Rust read_vault (Fase 3 do plano).
+  let notes: Note[] | null = null;
+  try {
+    // Caminho rápido: comando Rust varre tudo em 1 round-trip IPC.
+    notes = await readVaultFast(handle.path);
+  } catch (e) {
+    // Exe antigo sem o comando, ou falha inesperada — caminho legado (2 IPC/nota).
+    console.warn("[cofre] read_vault (Rust) indisponivel, usando fallback:", e);
+  }
+  if (!notes) {
+    notes = [];
+    await walk(handle.path, "", notes);
+  }
+  // Log único de medição da abertura do cofre.
   console.log(
     `[cofre] readVault: ${Math.round(performance.now() - t0)}ms / ${notes.length} notas (${handle.path})`
   );
   return notes;
+}
+
+async function readVaultFast(root: string): Promise<Note[]> {
+  const r = await invoke<RawVaultResult>("read_vault", { root });
+  for (const err of r.errors) console.error("[cofre] read_vault:", err);
+  return r.notes.map((n) => ({
+    path: n.path,
+    name: n.name,
+    content: n.content,
+    lastModified: n.mtimeMs,
+    createdAt: parseCreatedAt(n.content, n.name, n.mtimeMs),
+  }));
 }
 
 async function walk(

@@ -1,3 +1,5 @@
+mod vault;
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
   let mut builder = tauri::Builder::default()
@@ -16,6 +18,7 @@ pub fn run() {
   }
 
   builder
+    .invoke_handler(tauri::generate_handler![vault::read_vault])
     .setup(|app| {
       if cfg!(debug_assertions) {
         app.handle().plugin(
