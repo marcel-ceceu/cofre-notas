@@ -1,6 +1,8 @@
-# 2605 Leitor Notas PC (Vite) - servidor local
+# 2606 Cofre de Notas (Vite) - servidor local
 # Duplo-clique no ficheiro OU cole este bloco INTEIRO no PowerShell.
 # Parametros opcionais: -UseExisting  |  -Restart
+# Colado no console nao existe $PSScriptRoot: o fallback abaixo precisa ser a
+# pasta canonica do repo (ver docs/HISTORICO.md).
 
 param(
     [switch]$UseExisting,
@@ -9,10 +11,10 @@ param(
 
 $ErrorActionPreference = 'Stop'
 
-$Root = if ($PSScriptRoot) { $PSScriptRoot } else { 'c:\projetos\2605_APPLEITOR_LeitorNotasPC' }
+$Root = if ($PSScriptRoot) { $PSScriptRoot } else { 'C:\3.1-Projetos2\2606_COFRENOTAS-LeitorNotasObsidianAPP' }
 $DesiredPort = 5173
 $CandidatePorts = @(5173, 5174, 5175, 5176, 5177, 5178)
-$ProjectMarker = '2605_APPLEITOR_LeitorNotasPC'
+$ProjectMarker = '2606_COFRENOTAS-LeitorNotasObsidianAPP'
 
 function Get-PortListeners {
     param([int[]]$Ports)
@@ -74,6 +76,12 @@ function Stop-ProjectDevServers {
     Start-Sleep -Seconds 2
 }
 
+if (-not (Test-Path -LiteralPath $Root -PathType Container)) {
+    Write-Host 'ERRO: a pasta do repo nao existe:' -ForegroundColor Red
+    Write-Host "  $Root" -ForegroundColor Red
+    Write-Host 'Abra o PowerShell na pasta do repo ou corrija $Root no script.' -ForegroundColor Yellow
+    exit 1
+}
 Set-Location -LiteralPath $Root
 
 $Pkg = Join-Path $Root 'package.json'
