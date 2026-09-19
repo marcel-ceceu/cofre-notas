@@ -69,7 +69,7 @@ function cleanTurn(body: string, cort: string[]): string | null {
   return paras.join("\n\n").trim();
 }
 
-const HEADER_RE = /^##\s+\S+\s+(You|Claude)\s+\*\([^)]*\)\*[^\r\n]*\r?\n/gm;
+const HEADER_RE = /^##\s+\S+\s+(You|Claude|Cursor)\s+\*\([^)]*\)\*[^\r\n]*\r?\n/gm;
 const CODE_FENCE_RE = /```[\s\S]*?```/g;
 
 /**

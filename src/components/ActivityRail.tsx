@@ -35,7 +35,7 @@ const ITEMS: Item[] = [
   {
     view: "import",
     label: "Importar",
-    hint: "Pipeline: exportação do Claude.ai → notas .md no cofre",
+    hint: "Pipeline: exportação do Claude.ai / transcripts do Cursor → notas .md no cofre",
     icon: (
       <svg
         viewBox="0 0 20 20"

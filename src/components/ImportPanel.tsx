@@ -6,6 +6,9 @@ import { isTauriRuntime, type TauriDirHandle } from "../lib/fileSystem.tauri";
 const ImportClaudeModal = lazy(() =>
   import("./ImportClaudeModal").then((m) => ({ default: m.ImportClaudeModal }))
 );
+const ImportCursorModal = lazy(() =>
+  import("./ImportCursorModal").then((m) => ({ default: m.ImportCursorModal }))
+);
 
 type Props = {
   onImported: (dest: string) => void;
@@ -35,6 +38,8 @@ export function ImportPanel({ onImported }: Props) {
   const dirHandle = useVaultStore((s) => s.dirHandle);
   const notes = useVaultStore((s) => s.notes);
   const [open, setOpen] = useState(false);
+  const [openCursor, setOpenCursor] = useState(false);
+  const desktop = isTauriRuntime();
 
   const vaultPath =
     dirHandle && (dirHandle as TauriDirHandle).kind === "tauri"
@@ -81,6 +86,29 @@ export function ImportPanel({ onImported }: Props) {
           Executar pipeline de importação
         </button>
 
+        <div className="space-y-2 border-t border-[var(--rule)] pt-3">
+          <p className="text-[12px] font-medium text-[var(--ink)]">Cursor (local)</p>
+          <p className="text-[11.5px] leading-snug text-[var(--ink-muted)]">
+            Lê os transcripts em <code>~\.cursor\projects</code>, mostra quais
+            conversas são novas ou mudaram, e grava só as que você marcar em{" "}
+            <code>Cursor\</code> dentro do cofre.
+          </p>
+          <button
+            type="button"
+            onClick={() => setOpenCursor(true)}
+            disabled={!desktop}
+            title={desktop ? undefined : "Disponível só no app desktop"}
+            className="tb-btn w-full justify-center disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            Importar do Cursor
+          </button>
+          {!desktop && (
+            <p className="text-[11px] text-[var(--ink-faint)]">
+              O navegador não enxerga os arquivos do Cursor — use o app desktop.
+            </p>
+          )}
+        </div>
+
         <dl className="space-y-1.5 rounded-md border border-[var(--rule)] bg-[var(--chrome)] px-2.5 py-2">
           <div className="flex items-baseline justify-between gap-2">
             <dt className="meta-label">Cofre</dt>
@@ -100,7 +128,7 @@ export function ImportPanel({ onImported }: Props) {
           <div className="flex items-baseline justify-between gap-2">
             <dt className="meta-label">Modo</dt>
             <dd className="text-[11px] text-[var(--ink-muted)]">
-              {isTauriRuntime() ? "desktop" : "navegador"}
+              {desktop ? "desktop" : "navegador"}
             </dd>
           </div>
         </dl>
@@ -112,6 +140,15 @@ export function ImportPanel({ onImported }: Props) {
             onClose={() => setOpen(false)}
             onImported={(dest) => {
               setOpen(false);
+              onImported(dest);
+            }}
+          />
+        )}
+        {openCursor && (
+          <ImportCursorModal
+            onClose={() => setOpenCursor(false)}
+            onImported={(dest) => {
+              setOpenCursor(false);
               onImported(dest);
             }}
           />

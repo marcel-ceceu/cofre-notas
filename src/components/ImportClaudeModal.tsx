@@ -15,6 +15,7 @@ import {
   importClaudeZipsWeb,
   isCompatibleClaudeZipFile,
 } from "../lib/import/webVault";
+import { DEFAULT_IMPORT_OUT_DIR } from "../lib/import/dest";
 
 type Props = {
   onClose: () => void;
@@ -23,7 +24,7 @@ type Props = {
 };
 
 /** Pasta de saída padrão oficial do fluxo. */
-const DEFAULT_OUT_DIR = "D:\\2606VAULT-ClaudeConversasOF-v2";
+const DEFAULT_OUT_DIR = DEFAULT_IMPORT_OUT_DIR;
 
 /** Link para solicitar o export das conversas no Claude.ai. */
 const EXPORT_URL = "https://claude.ai/settings/data-privacy-controls";

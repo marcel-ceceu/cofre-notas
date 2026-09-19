@@ -86,13 +86,16 @@ export function headerStatus(raw: string): HeaderStatus {
 
 /**
  * Detecta a origem pelo formato do arquivo.
- * Hoje só CLAUDEWEB é conhecido (frontmatter estilo export + turnos
- * "## 👤 You" / "## 🤖 Claude"). As demais retornam null até termos um
- * exemplo real de cada uma para definir a regra.
+ * CURSOR: turnos "## 🤖 Cursor" (gerados por cursorImport.ts) — testado
+ * primeiro porque também usa "## 👤 You".
+ * CLAUDEWEB: frontmatter estilo export + turnos "## 👤 You" / "## 🤖 Claude".
+ * As demais retornam null até termos um exemplo real de cada uma.
  */
 export function detectOrigem(raw: string): Origem | null {
   const fm = parseFrontmatter(raw);
-  if (fm && /^##\s+(?:👤 You|🤖 Claude)\b/m.test(raw)) return "CLAUDEWEB";
+  if (!fm) return null;
+  if (/^##\s+🤖 Cursor\b/m.test(raw)) return "CURSOR";
+  if (/^##\s+(?:👤 You|🤖 Claude)\b/m.test(raw)) return "CLAUDEWEB";
   return null;
 }
 

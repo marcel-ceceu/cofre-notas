@@ -64,8 +64,9 @@ function cryptoRandom(): string {
 /**
  * Slug do título: troca caracteres inválidos de nome de arquivo por espaço,
  * mantém só letras/dígitos/espaço/hífen (Unicode), espaços→'-', colapsa, máx 55.
+ * Exportado: cursorImport.ts reutiliza a mesma regra de nome de arquivo.
  */
-function slugify(title: string): string {
+export function slugify(title: string): string {
   let sl = title
     .replace(/[\\/:*?"<>|]/g, " ")
     .replace(/[^\p{L}\p{N}\s-]/gu, "")
@@ -77,7 +78,7 @@ function slugify(title: string): string {
 }
 
 /** Prefixo de data yyyy-MM-dd a partir do created_at ISO (estável, sem timezone). */
-function datePrefix(createdAt?: string): string {
+export function datePrefix(createdAt?: string): string {
   const m = String(createdAt ?? "").match(/^(\d{4}-\d{2}-\d{2})/);
   return m ? m[1] : "0000-00-00";
 }

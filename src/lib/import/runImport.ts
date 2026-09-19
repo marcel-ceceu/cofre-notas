@@ -42,8 +42,10 @@ export type ImportResult = {
  * da conversa mudem entre exports, o uuid não muda.
  * Havendo mais de um arquivo com o mesmo uuid (duplicatas antigas), fica o de
  * `updated` mais recente como alvo.
+ * Não-recursivo de propósito: cada fluxo (Claude na raiz, Cursor em `Cursor\`)
+ * só enxerga a própria pasta. Exportado para runCursorImport.ts.
  */
-async function scanExistingNotes(
+export async function scanExistingNotes(
   outDir: string,
   onProgress?: (p: ImportProgress) => void
 ): Promise<{

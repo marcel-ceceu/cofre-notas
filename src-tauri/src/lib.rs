@@ -1,3 +1,4 @@
+mod cursor;
 mod vault;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -18,7 +19,10 @@ pub fn run() {
   }
 
   builder
-    .invoke_handler(tauri::generate_handler![vault::read_vault])
+    .invoke_handler(tauri::generate_handler![
+      vault::read_vault,
+      cursor::scan_cursor_transcripts
+    ])
     .setup(|app| {
       if cfg!(debug_assertions) {
         app.handle().plugin(

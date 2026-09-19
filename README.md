@@ -98,14 +98,26 @@ rodando de novo.
 Só entram notas com o cabeçalho completo (`title`, `origem`, `uuid`, `created`,
 `updated`). O botão **Padronizar cabeçalho** insere o `origem` que estiver
 faltando, com backup `.bak` ao lado de cada arquivo alterado. Hoje a detecção
-automática de origem só reconhece `CLAUDEWEB`; as demais aparecem como
+automática de origem reconhece `CLAUDEWEB` e `CURSOR`; as demais aparecem como
 "pendente(s) de regra por origem".
+
+## Importar do Cursor
+
+No painel **Importar**, o botão **Importar do Cursor** (só no app desktop) lê os
+transcripts locais do Cursor IDE em `~\.cursor\projects\<projeto>\agent-transcripts\<uuid>\<uuid>.jsonl`
+(subagentes ficam de fora), mostra cada conversa como **nova**, **alterada** ou
+**já no cofre** (mesma regra do Claude: `uuid` + `updated`) e grava só as que
+você marcar em `Cursor\` dentro do cofre, com `origem: CURSOR`. A nota guarda
+apenas o diálogo (sua pergunta + texto do assistente); chamadas de ferramenta e
+o contexto que o Cursor injeta são descartados. O título vem da primeira
+pergunta. O inventário é feito por um comando Rust (`scan_cursor_transcripts`)
+em um único round-trip.
 
 ## Estrutura
 
 ```
 src/lib/supabase/    cliente, auth por senha, mapeamento nota→linha, upload
-src/lib/import/      frontmatter, cabeçalho padrão, importação .zip
+src/lib/import/      frontmatter, cabeçalho padrão, importação .zip (Claude) e .jsonl (Cursor)
 src/components/      rail lateral, painéis, modal de sincronização
 supabase/migrations/ DDL versionado
 src-tauri/           shell desktop (Rust)
