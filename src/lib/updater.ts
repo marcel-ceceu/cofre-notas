@@ -1,6 +1,15 @@
 import { isTauriRuntime } from "./fileSystem.tauri";
 import type { Update } from "@tauri-apps/plugin-updater";
 
+/** Evento global que pede uma checagem manual (badge de versão → clique). */
+export const UPDATE_CHECK_EVENT = "cofre-buscar-atualizacao";
+
+/** Dispara a checagem manual; o UpdateBanner escuta e mostra o resultado. */
+export function requestUpdateCheck(): void {
+  if (typeof window === "undefined") return;
+  window.dispatchEvent(new CustomEvent(UPDATE_CHECK_EVENT));
+}
+
 /**
  * Consulta o endpoint configurado (GitHub Releases) e retorna a atualização
  * disponível, ou null se já estamos na versão mais recente / fora do Tauri.

@@ -17,6 +17,7 @@ import { SearchScrollRuler } from "./components/SearchScrollRuler";
 import { SortControl } from "./components/SortControl";
 import { SearchBox } from "./components/SearchBox";
 import { UpdateBanner } from "./components/UpdateBanner";
+import { VersionBadge } from "./components/VersionBadge";
 import { ToolbarActions } from "./components/ToolbarActions";
 import { ActivityRail, type RailView } from "./components/ActivityRail";
 import { ImportPanel } from "./components/ImportPanel";
@@ -271,6 +272,8 @@ export default function App() {
             {error}
           </p>
         )}
+
+        <VersionBadge />
 
         <span className="h-4 w-px bg-[var(--rule)]" />
 

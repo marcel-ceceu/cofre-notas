@@ -8,7 +8,7 @@
 | **Nome do app (UI / instalador)** | Cofre de Notas |
 | **Repositório GitHub** | [marcel-ceceu/cofre-notas](https://github.com/marcel-ceceu/cofre-notas) |
 | **Stack** | Tauri 2 + Vite + React 18 + Tailwind 4 |
-| **Versão atual** | **0.10.0** (tag `v0.10.0`) |
+| **Versão atual** | **0.11.0** (tag `v0.11.0`) |
 | **Auto-update** | GitHub Releases + `latest.json` + `UpdateBanner` |
 
 > O **nome da pasta local** segue a convenção `2606_*` do workspace. O **repo remoto** e o **identificador Tauri** (`com.marcel.cofre-notas`) mantêm-se `cofre-notas` para não quebrar releases nem updates já instalados.
@@ -16,6 +16,16 @@
 ---
 
 ## Entradas de histórico
+
+### 19/09/2026 — v0.11.0: badge de versão + "Buscar atualizações"
+
+**Contexto:** o app só avisava de versão nova ao abrir; não dava para ver qual versão estava instalada nem forçar a checagem (padrão já existente no VENDASMODULO).
+
+**Mudança:** badge `vX.Y.Z` na toolbar (`VersionBadge`, versão vem do `package.json` via `define` do Vite → `APP_VERSION`). Clique = checagem manual pelo updater: mostra "nova versão disponível" (com instalar/reiniciar), "já está na versão mais recente", ou erro de rede; no navegador avisa que é só no desktop. O `UpdateBanner` também recheca sozinho a cada 4h com o app aberto.
+
+**Validação:** `npm test`, `tsc -b`, `vite build`, `cargo check`.
+
+---
 
 ### 19/09/2026 — v0.10.0: Importar do Cursor
 
@@ -61,6 +71,7 @@
 
 | Versão | Data (release) | Destaques |
 |--------|----------------|-----------|
+| **0.11.0** | 19/09/2026 | Badge de versão na toolbar + "Buscar atualizações" manual; rechecagem automática a cada 4h |
 | **0.10.0** | 19/09/2026 | Importar do Cursor: scan Rust dos transcripts, seleção com anti-duplicata, notas em `Cursor\` com `origem: CURSOR` |
 | **0.9.2** | 20/07/2026 | Overview ruler: ticks amarelos na rolagem do viewer (matches da busca) |
 | 0.9.1 | — | (patch) |

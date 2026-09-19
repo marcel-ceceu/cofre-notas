@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
@@ -7,10 +8,19 @@ import { VitePWA } from "vite-plugin-pwa";
 // na Vercel), ativamos a PWA. Assim o service worker NUNCA entra no app nativo.
 const isTauri = !!process.env.TAURI_ENV_PLATFORM;
 
+// Versão única (package.json) injetada no bundle — o badge da toolbar e o
+// updater leem daqui, nunca de um número copiado à mão.
+const pkgVersion: string = JSON.parse(
+  readFileSync(new URL("./package.json", import.meta.url), "utf8")
+).version;
+
 // Configuração alinhada ao Tauri: porta fixa (devUrl em tauri.conf.json)
 // e o watcher do Vite ignorando src-tauri/ — senão ele tenta vigiar
 // target/debug/...app_lib.dll (travado pelo app) e quebra com EBUSY.
 export default defineConfig({
+  define: {
+    __APP_VERSION__: JSON.stringify(pkgVersion),
+  },
   plugins: [
     react(),
     tailwindcss(),

@@ -6,7 +6,7 @@
 #   powershell -NoProfile -ExecutionPolicy Bypass -File ".\publicar.ps1" -Version 0.2.0
 
 param(
-    [string]$Version = "0.10.0",
+    [string]$Version = "0.11.0",
     [string]$Repo = "marcel-ceceu/cofre-notas"
 )
 
@@ -17,19 +17,19 @@ Write-Host "==> Repo:    $Repo"     -ForegroundColor Cyan
 Write-Host "==> Versao:  $Version"  -ForegroundColor Cyan
 Write-Host ""
 
-# 1) Secret da senha (vazia). A chave nao tem senha; isso e' so para deixar explicito.
-#    Se falhar, nao tem problema: o workflow trata secret ausente como string vazia.
-Write-Host "==> Configurando secret TAURI_SIGNING_PRIVATE_KEY_PASSWORD (vazia)..." -ForegroundColor Cyan
-$tmp = New-TemporaryFile
-try {
-    Get-Content -Raw $tmp.FullName | gh secret set TAURI_SIGNING_PRIVATE_KEY_PASSWORD --repo $Repo
-    Write-Host "    OK (senha vazia configurada)." -ForegroundColor Green
+# 1) Senha da chave do updater: a chave NAO tem senha, e o workflow le o secret
+#    ausente como string vazia — que e' exatamente o que o tauri espera.
+#    NUNCA "setar vazio" via pipe: no PowerShell 5.1, `$null | gh secret set`
+#    grava uma linha em branco e a CI cai com "Wrong password for that key"
+#    (foi o que derrubou a release v0.10.0 em 19/09/2026). Garantimos a ausencia.
+Write-Host "==> Garantindo que TAURI_SIGNING_PRIVATE_KEY_PASSWORD NAO existe no repo..." -ForegroundColor Cyan
+$secrets = (gh secret list --repo $Repo 2>$null) -join "`n"
+if ($secrets -match "TAURI_SIGNING_PRIVATE_KEY_PASSWORD") {
+    gh secret delete TAURI_SIGNING_PRIVATE_KEY_PASSWORD --repo $Repo
+    Write-Host "    Secret removido (senha vazia = ausente)." -ForegroundColor Green
 }
-catch {
-    Write-Warning "    Nao consegui setar a senha vazia; seguindo (o workflow assume vazio por padrao)."
-}
-finally {
-    Remove-Item $tmp.FullName -Force -ErrorAction SilentlyContinue
+else {
+    Write-Host "    OK (ausente)." -ForegroundColor Green
 }
 Write-Host ""
 

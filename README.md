@@ -7,7 +7,7 @@ consolidação e sincronização para o Supabase.
 ## Abrir o app
 
 **Uso normal:** rode o instalador
-`src-tauri/target/release/bundle/nsis/Cofre de Notas_0.10.0_x64-setup.exe`,
+`src-tauri/target/release/bundle/nsis/Cofre de Notas_0.11.0_x64-setup.exe`,
 ou abra direto o executável `src-tauri/target/release/app.exe` (o nome vem do
 pacote Cargo; o instalador é que cria o atalho "Cofre de Notas"). Não precisa
 de terminal aberto.
