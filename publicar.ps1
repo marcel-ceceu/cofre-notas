@@ -6,7 +6,7 @@
 #   powershell -NoProfile -ExecutionPolicy Bypass -File ".\publicar.ps1" -Version 0.2.0
 
 param(
-    [string]$Version = "0.11.0",
+    [string]$Version = "0.11.1",
     [string]$Repo = "marcel-ceceu/cofre-notas"
 )
 

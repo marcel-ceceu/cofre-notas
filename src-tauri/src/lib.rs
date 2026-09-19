@@ -1,6 +1,14 @@
 mod cursor;
 mod vault;
 
+use tauri::Manager;
+
+/// A janela nasce oculta (tauri.conf.json: visible=false) e o front a mostra
+/// após o primeiro paint. Se o JS não conseguir (ACL sem `window:allow-show`,
+/// erro no bundle...), este fallback garante que ela apareça — na 0.11.0 o app
+/// abria invisível por isso.
+const SHOW_FALLBACK_MS: u64 = 2500;
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
   let mut builder = tauri::Builder::default()
@@ -30,6 +38,14 @@ pub fn run() {
             .level(log::LevelFilter::Info)
             .build(),
         )?;
+      }
+      if let Some(win) = app.get_webview_window("main") {
+        std::thread::spawn(move || {
+          std::thread::sleep(std::time::Duration::from_millis(SHOW_FALLBACK_MS));
+          if !win.is_visible().unwrap_or(false) {
+            let _ = win.show();
+          }
+        });
       }
       Ok(())
     })

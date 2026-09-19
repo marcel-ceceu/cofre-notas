@@ -8,7 +8,7 @@
 | **Nome do app (UI / instalador)** | Cofre de Notas |
 | **Repositório GitHub** | [marcel-ceceu/cofre-notas](https://github.com/marcel-ceceu/cofre-notas) |
 | **Stack** | Tauri 2 + Vite + React 18 + Tailwind 4 |
-| **Versão atual** | **0.11.0** (tag `v0.11.0`) |
+| **Versão atual** | **0.11.1** (tag `v0.11.1`) |
 | **Auto-update** | GitHub Releases + `latest.json` + `UpdateBanner` |
 
 > O **nome da pasta local** segue a convenção `2606_*` do workspace. O **repo remoto** e o **identificador Tauri** (`com.marcel.cofre-notas`) mantêm-se `cofre-notas` para não quebrar releases nem updates já instalados.
@@ -16,6 +16,16 @@
 ---
 
 ## Entradas de histórico
+
+### 19/09/2026 — v0.11.1: hotfix — app abria com a janela invisível
+
+**Contexto:** após atualizar para a 0.11.0 o app "não abria": o processo `app.exe` ficava vivo com a janela `Cofre de Notas` oculta. A janela nasce com `visible: false` (commit de julho "janela sem flash branco", que nunca tinha virado release) e o `main.tsx` chama `getCurrentWindow().show()` — mas `core:window:default` **não inclui `allow-show`**, o ACL nega e o `.catch` engole o erro. Reproduzido com o exe release local (`EnumWindows` → `Tauri Window vis=False`) e confirmado no `acl-manifests.json` gerado pelo build.
+
+**Mudança:** `core:window:allow-show` na capability + fallback no Rust (`lib.rs` setup: 2,5 s depois, se a janela ainda estiver oculta, `show()`), para nunca mais depender só do JS.
+
+**Validação:** `cargo check`, `npm run build`; exe release local aberto e enumerado → janela visível.
+
+---
 
 ### 19/09/2026 — v0.11.0: badge de versão + "Buscar atualizações"
 
@@ -71,6 +81,7 @@
 
 | Versão | Data (release) | Destaques |
 |--------|----------------|-----------|
+| **0.11.1** | 19/09/2026 | Hotfix: janela invisível ao abrir (ACL sem `window:allow-show` + fallback de `show()` no Rust) |
 | **0.11.0** | 19/09/2026 | Badge de versão na toolbar + "Buscar atualizações" manual; rechecagem automática a cada 4h |
 | **0.10.0** | 19/09/2026 | Importar do Cursor: scan Rust dos transcripts, seleção com anti-duplicata, notas em `Cursor\` com `origem: CURSOR` |
 | **0.9.2** | 20/07/2026 | Overview ruler: ticks amarelos na rolagem do viewer (matches da busca) |
