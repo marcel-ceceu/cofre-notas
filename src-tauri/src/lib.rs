@@ -1,4 +1,5 @@
 mod cursor;
+mod chatgpt;
 mod vault;
 
 use tauri::Manager;
@@ -29,7 +30,8 @@ pub fn run() {
   builder
     .invoke_handler(tauri::generate_handler![
       vault::read_vault,
-      cursor::scan_cursor_transcripts
+      cursor::scan_cursor_transcripts,
+      chatgpt::abrir_chatgpt
     ])
     .setup(|app| {
       if cfg!(debug_assertions) {

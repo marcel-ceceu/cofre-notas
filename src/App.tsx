@@ -1,5 +1,7 @@
 import { lazy, Suspense, useEffect, useRef, useState } from "react";
+import { invoke } from "@tauri-apps/api/core";
 import { useVaultStore } from "./store/vaultStore";
+import { isTauriRuntime } from "./lib/fileSystem.tauri";
 import {
   pickVaultDirectory,
   readVault,
@@ -260,6 +262,15 @@ export default function App() {
             />
           </svg>
           Importar
+        </button>
+
+        <button
+          onClick={() => invoke("abrir_chatgpt").catch((e) => setError(String(e)))}
+          disabled={!isTauriRuntime()}
+          className="tb-btn"
+          title="TESTE: abre o ChatGPT numa janela interna com o exportador (⬇ GPT) injetado"
+        >
+          ChatGPT (teste)
         </button>
 
         <div className="flex-1" />
