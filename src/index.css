@@ -56,6 +56,9 @@
   /* realce de busca */
   --mark: #ddcffb;
   --mark-ink: #3a2a72;
+  /* ocorrência ATUAL da busca na nota — âmbar, para destacar da família roxa */
+  --mark-current: #f6b26b;
+  --mark-current-ink: #2d1f0a;
 
   --ui: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
   --read: "Newsreader Variable", "Newsreader", Georgia, serif;
@@ -390,11 +393,18 @@ body {
 }
 
 mark,
-.hl {
+.hl,
+.hl-find {
   background: var(--mark);
   color: var(--mark-ink);
   border-radius: 2px;
   padding: 0 1px;
+}
+/* Busca na nota: a ocorrência em foco (Enter / Shift+Enter) */
+.hl-find--current {
+  background: var(--mark-current);
+  color: var(--mark-current-ink);
+  box-shadow: 0 0 0 1.5px var(--mark-current);
 }
 
 /* ---------- Corpo do markdown: leitura longa ---------- */

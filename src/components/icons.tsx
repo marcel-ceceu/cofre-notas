@@ -15,6 +15,23 @@ export function SyncIcon({ className }: { className?: string }) {
   );
 }
 
+/** Lupa — usada na busca global (sidebar) e na busca dentro da nota. */
+export function SearchIcon({ className = "" }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 20 20"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.6"
+      className={className}
+      aria-hidden
+    >
+      <circle cx="9" cy="9" r="5.5" />
+      <path d="M13 13l4 4" strokeLinecap="round" />
+    </svg>
+  );
+}
+
 /** Ícone do rail e do cabeçalho — cérebro/memória destilada. */
 export function PilotoIcon({ className = "" }: { className?: string }) {
   return (

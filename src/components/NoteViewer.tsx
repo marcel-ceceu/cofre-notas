@@ -2,7 +2,7 @@ import ReactMarkdown, { type Components } from "react-markdown";
 import remarkGfm from "remark-gfm";
 import React, { useMemo } from "react";
 import { useVaultStore } from "../store/vaultStore";
-import { highlight } from "../lib/highlight";
+import { highlight, highlightFind } from "../lib/highlight";
 
 /**
  * Lixo de export do Claude/ChatGPT — code fences contendo apenas placeholders
@@ -30,6 +30,11 @@ function shouldSkipBlock(children: React.ReactNode): boolean {
   return SKIP_BLOCK_PATTERNS.some((re) => re.test(text));
 }
 
+type Marker = (children: React.ReactNode) => React.ReactNode;
+
+/** Props que o react-markdown entrega aos componentes (inclui o nó hast em `node`). */
+type MdProps = React.HTMLAttributes<HTMLElement> & { node?: unknown };
+
 /**
  * memo: o viewer assina a store sozinho (sem props) — re-renders do App
  * (seleção, arraste da sidebar, modais) não devem re-parsear o markdown.
@@ -38,23 +43,35 @@ export const NoteViewer = React.memo(function NoteViewer() {
   const notes = useVaultStore((s) => s.notes);
   const activePath = useVaultStore((s) => s.activePath);
   const query = useVaultStore((s) => s.query);
+  const findTerm = useVaultStore((s) => s.findTerm);
   const searchMode = useVaultStore((s) => s.searchPrefs.searchMode);
   const note = notes.find((n) => n.path === activePath) ?? null;
 
+  // Busca na nota ativa suprime o realce da busca global: um só conjunto de
+  // <mark> no DOM, para o contador "N de M" e a régua baterem.
+  // Com findTerm ativo a query não entra nas deps: digitar na busca global
+  // não deve remontar o markdown (perderia a ocorrência atual).
+  const effectiveQuery = findTerm ? "" : query;
+  const mark = useMemo<Marker | null>(() => {
+    if (findTerm) return (c) => highlightFind(c, findTerm);
+    if (effectiveQuery) return (c) => highlight(c, effectiveQuery, searchMode);
+    return null;
+  }, [effectiveQuery, searchMode, findTerm]);
+
   const components = useMemo<Components>(() => {
     const base: Components = {
-      pre: (props) => {
-        if (shouldSkipBlock(props.children)) return null;
-        return <pre {...props} />;
+      // `node` (hast) não pode vazar para o DOM.
+      pre: ({ node: _node, ...rest }) => {
+        if (shouldSkipBlock(rest.children)) return null;
+        return <pre {...rest} />;
       },
     };
 
-    if (!query) return base;
+    if (!mark) return base;
 
     const wrap = (Tag: keyof React.JSX.IntrinsicElements) => {
-      const Comp = (props: { children?: React.ReactNode }) => (
-        <Tag>{highlight(props.children, query, searchMode)}</Tag>
-      );
+      const Comp = ({ node: _node, children, ...rest }: MdProps) =>
+        React.createElement(Tag, rest, mark(children));
       Comp.displayName = `Highlighted(${String(Tag)})`;
       return Comp;
     };
@@ -73,7 +90,7 @@ export const NoteViewer = React.memo(function NoteViewer() {
       blockquote: wrap("blockquote"),
       code: wrap("code"),
     };
-  }, [query, searchMode]);
+  }, [mark]);
 
   if (!note) {
     return (
@@ -101,7 +118,7 @@ export const NoteViewer = React.memo(function NoteViewer() {
           })}
         </p>
         <h1 className="mt-1.5 text-[1.6rem] leading-[1.2] font-semibold tracking-tight text-balance text-[var(--ink)]">
-          {highlight(note.name, query, searchMode)}
+          {mark ? mark(note.name) : note.name}
         </h1>
         <div className="mt-3 flex items-center gap-2">
           <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--accent)]" />

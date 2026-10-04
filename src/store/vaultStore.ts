@@ -67,6 +67,8 @@ type VaultState = {
   error: string | null;
   sortKey: SortKey;
   query: string;
+  /** Termo da busca DENTRO da nota aberta (Ctrl+F). "" = inativa. Não persiste. */
+  findTerm: string;
   searchPrefs: SearchPrefs;
   /** Notas marcadas na lista — alimentam o painel de consolidação. */
   selectedPaths: string[];
@@ -80,6 +82,7 @@ type VaultState = {
   setError: (error: string | null) => void;
   setSortKey: (sortKey: SortKey) => void;
   setQuery: (query: string) => void;
+  setFindTerm: (findTerm: string) => void;
   setSearchPrefs: (patch: Partial<SearchPrefs>) => void;
   setSelectedPaths: (paths: string[]) => void;
   clearSelection: () => void;
@@ -96,6 +99,7 @@ export const useVaultStore = create<VaultState>((set, get) => ({
   error: null,
   sortKey: loadSortKey(),
   query: "",
+  findTerm: "",
   searchPrefs: loadSearchPrefs(),
   selectedPaths: [],
   syncScope: null,
@@ -110,6 +114,7 @@ export const useVaultStore = create<VaultState>((set, get) => ({
     set({ sortKey });
   },
   setQuery: (query) => set({ query }),
+  setFindTerm: (findTerm) => set({ findTerm }),
   setSearchPrefs: (patch) => {
     const next = { ...get().searchPrefs, ...patch };
     next.minChars = Math.max(1, Math.floor(next.minChars) || 1);
@@ -132,6 +137,7 @@ export const useVaultStore = create<VaultState>((set, get) => ({
       loading: false,
       error: null,
       query: "",
+      findTerm: "",
       selectedPaths: [],
     }),
 }));

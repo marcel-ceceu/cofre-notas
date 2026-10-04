@@ -8,7 +8,7 @@
 | **Nome do app (UI / instalador)** | Cofre de Notas |
 | **Repositório GitHub** | [marcel-ceceu/cofre-notas](https://github.com/marcel-ceceu/cofre-notas) |
 | **Stack** | Tauri 2 + Vite + React 18 + Tailwind 4 |
-| **Versão atual** | **0.11.1** (tag `v0.11.1`) |
+| **Versão atual** | **0.12.0** (tag `v0.12.0`) |
 | **Auto-update** | GitHub Releases + `latest.json` + `UpdateBanner` |
 
 > O **nome da pasta local** segue a convenção `2606_*` do workspace. O **repo remoto** e o **identificador Tauri** (`com.marcel.cofre-notas`) mantêm-se `cofre-notas` para não quebrar releases nem updates já instalados.
@@ -16,6 +16,16 @@
 ---
 
 ## Entradas de histórico
+
+### 04/10/2026 — v0.12.0: busca dentro da nota (lupa flutuante / Ctrl+F)
+
+**Contexto:** a busca global filtra a lista e realça termos, mas não havia como procurar um trecho **dentro** da nota aberta nem navegar entre as ocorrências. Ctrl+F caía no find nativo do WebView2.
+
+**Mudança:** lupa flutuante no canto superior direito da nota (`NoteFind` + `NoteFindBar`); ao clicar ou com Ctrl+F vira a barra: input, contador "N de M", anterior/próxima (Shift+Enter / Enter), fechar (Esc). Comparação sem distinguir maiúsculas nem acentos ("acao" acha "ação"), substring literal — lógica pura em `lib/noteFind.ts` (`foldText` com mapa de posições para o texto original, `findMatches`, `stepIndex`). O termo vai para a store (`findTerm`); enquanto ativo, o viewer mostra só os `<mark class="hl-find">` da busca na nota (suprime o realce global) e a régua de ticks passa a acompanhá-lo. Navegação é imperativa sobre o DOM (classe `hl-find--current`, âmbar, + `scrollIntoView`), sem re-parsear o markdown a cada Enter; termo com debounce de 150 ms. De quebra: `highlight.tsx` deixou de aninhar `<mark>` dentro de `<mark>` (`li > p`, `p > code` duplicavam ocorrências) e o `wrap` do viewer passou a repassar as props originais (`className` de `code`, `align` de `td`) sem vazar o `node` do react-markdown. `SearchIcon` extraído para `icons.tsx`.
+
+**Validação:** `npm test` (50 casos: 23 em `noteFind.test.ts`, 12 em `highlight.test.ts`, 15 do Cursor), `tsc -b`, `vite build`, `npx tauri build --no-bundle` (release local).
+
+---
 
 ### 19/09/2026 — v0.11.1: hotfix — app abria com a janela invisível
 
@@ -81,6 +91,7 @@
 
 | Versão | Data (release) | Destaques |
 |--------|----------------|-----------|
+| **0.12.0** | 04/10/2026 | Busca dentro da nota: lupa flutuante / Ctrl+F, sem maiúsculas/acentos, contador N de M, Enter/Shift+Enter, ocorrência atual em âmbar |
 | **0.11.1** | 19/09/2026 | Hotfix: janela invisível ao abrir (ACL sem `window:allow-show` + fallback de `show()` no Rust) |
 | **0.11.0** | 19/09/2026 | Badge de versão na toolbar + "Buscar atualizações" manual; rechecagem automática a cada 4h |
 | **0.10.0** | 19/09/2026 | Importar do Cursor: scan Rust dos transcripts, seleção com anti-duplicata, notas em `Cursor\` com `origem: CURSOR` |

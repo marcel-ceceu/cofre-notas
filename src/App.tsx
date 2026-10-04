@@ -15,6 +15,7 @@ import {
 import { useSearchResults } from "./lib/useSearchResults";
 import { NoteList } from "./components/NoteList";
 import { NoteViewer } from "./components/NoteViewer";
+import { NoteFind } from "./components/NoteFind";
 import { SearchScrollRuler } from "./components/SearchScrollRuler";
 import { SortControl } from "./components/SortControl";
 import { SearchBox } from "./components/SearchBox";
@@ -54,6 +55,7 @@ export default function App() {
   const loading = useVaultStore((s) => s.loading);
   const error = useVaultStore((s) => s.error);
   const query = useVaultStore((s) => s.query);
+  const findTerm = useVaultStore((s) => s.findTerm);
   const searchPrefs = useVaultStore((s) => s.searchPrefs);
   const setDirHandle = useVaultStore((s) => s.setDirHandle);
   const setNotes = useVaultStore((s) => s.setNotes);
@@ -347,10 +349,11 @@ export default function App() {
           >
             <NoteViewer />
           </main>
-          {query ? (
+          <NoteFind scrollRef={viewerScrollRef} />
+          {query || findTerm ? (
             <SearchScrollRuler
               scrollRef={viewerScrollRef}
-              deps={[activePath, query, searchPrefs.searchMode]}
+              deps={[activePath, query, searchPrefs.searchMode, findTerm]}
             />
           ) : null}
         </div>
@@ -374,6 +377,10 @@ export default function App() {
           <span className="kbd">Ctrl</span>
           <span className="kbd">K</span>
           <span>buscar</span>
+          <span className="mx-1 h-3 w-px bg-[var(--rule)]" />
+          <span className="kbd">Ctrl</span>
+          <span className="kbd">F</span>
+          <span>na nota</span>
         </span>
       </footer>
 
