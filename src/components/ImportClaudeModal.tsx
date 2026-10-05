@@ -65,11 +65,17 @@ export function ImportClaudeModal({ onClose, onImported }: Props) {
       try {
         const found = await findLatestExportZips();
         if (cancelled || found.length === 0) return;
-        // Auto-detecção já vem de data-*.zip; confirma a assinatura por garantia.
+        // Auto-detecção é pelo nome (conversations-NNN.zip / data-*.zip);
+        // confirma a assinatura por garantia (lê só o fim do .zip).
         const ok: string[] = [];
+        const bad: string[] = [];
         for (const p of found) {
           if (await isCompatibleClaudeZip(p)) ok.push(p);
+          else bad.push(p);
         }
+        if (cancelled) return;
+        // Parte achada pelo nome mas inválida (download incompleto?): avisa, não some calada.
+        if (bad.length > 0) setRejected(await Promise.all(bad.map((p) => basename(p))));
         if (cancelled || ok.length === 0) return;
         const names = await Promise.all(ok.map((p) => basename(p)));
         if (cancelled) return;
@@ -262,9 +268,16 @@ export function ImportClaudeModal({ onClose, onImported }: Props) {
                   <p className="text-zinc-700">
                     Quando chegar, baixe o arquivo{" "}
                     <code className="rounded bg-zinc-100 px-1 text-[11px]">
-                      data-*.zip
+                      conversations-000.zip
                     </code>{" "}
-                    e volte aqui para selecioná-lo.
+                    (se vier em partes — <code className="rounded bg-zinc-100 px-1 text-[11px]">-001</code>,{" "}
+                    <code className="rounded bg-zinc-100 px-1 text-[11px]">-002</code>… — baixe
+                    todas) e volte aqui para selecioná-lo.
+                  </p>
+                  <p className="text-[11px] text-zinc-500">
+                    Exports antigos, no formato{" "}
+                    <code className="rounded bg-zinc-100 px-1">data-*.zip</code>, também
+                    funcionam.
                   </p>
                   <button
                     type="button"
@@ -315,9 +328,11 @@ export function ImportClaudeModal({ onClose, onImported }: Props) {
                 </ul>
               ) : (
                 <p className="text-xs text-zinc-500">
-                  Selecione o <code>data-*.zip</code> que você baixou do e-mail.
-                  Só arquivos que forem realmente um export de conversas do
-                  Claude serão aceitos.
+                  Selecione o <code>conversations-000.zip</code> que você baixou
+                  do e-mail — e as demais partes, se houver (pode escolher
+                  várias de uma vez). Exports antigos (<code>data-*.zip</code>)
+                  também servem. Só arquivos que forem realmente um export de
+                  conversas do Claude serão aceitos.
                 </p>
               )}
               {rejected.length > 0 && (
@@ -394,6 +409,14 @@ export function ImportClaudeModal({ onClose, onImported }: Props) {
                   {result.empty > 0 ? ` · ${result.empty} vazia(s)` : ""}
                 </p>
               </div>
+            )}
+
+            {result && result.failed.length > 0 && (
+              <p className="rounded border border-amber-200 bg-amber-50 p-2 text-[11px] text-amber-700">
+                Não deu para ler por completo (arquivo corrompido ou
+                incompleto — baixe de novo):{" "}
+                <span className="font-mono">{result.failed.join(", ")}</span>
+              </p>
             )}
 
             {error && (

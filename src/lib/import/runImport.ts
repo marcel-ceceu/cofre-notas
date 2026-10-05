@@ -1,9 +1,10 @@
 /**
  * Importar Claude — orquestrador de I/O (Tauri).
- * Lê os ZIPs, descompacta, parseia, deduplica e grava os .md na pasta de saída.
+ * Lê os ZIPs aos pedaços (exportStream.ts), deduplica e grava os .md na pasta de saída.
  */
 import {
-  readFile,
+  open,
+  SeekMode,
   readTextFile,
   writeTextFile,
   mkdir,
@@ -11,15 +12,15 @@ import {
   stat,
 } from "@tauri-apps/plugin-fs";
 import { join, downloadDir } from "@tauri-apps/api/path";
-import { extractConversationsJson } from "./zip";
+import { parseNoteMeta, chooseTargetName } from "./claudeImport";
 import {
-  parseConversations,
-  dedupeByUuid,
-  conversationToMarkdown,
-  parseNoteMeta,
-  chooseTargetName,
-  type ClaudeConversation,
-} from "./claudeImport";
+  collectConversations,
+  isCompatibleExport,
+  CHUNK_BYTES,
+  type RandomAccess,
+  type ZipSource,
+} from "./exportStream";
+import { isExportZipName, pickLatestExport } from "./exportFiles";
 import { removeCortesias, prepareCortesias } from "./cortesias";
 import { DEFAULT_CORTESIAS } from "./cortesias.rules";
 
@@ -34,6 +35,8 @@ export type ImportResult = {
   /** notas puladas: a mesma versão já estava gravada */
   unchanged: number;
   empty: number;
+  /** .zip que não puderam ser lidos (inteiros ou a partir de algum ponto) */
+  failed: string[];
 };
 
 /**
@@ -87,8 +90,9 @@ export async function scanExistingNotes(
 }
 
 /**
- * Acha o export mais recente em Downloads (data-*.zip) e inclui todos os
- * batches do mesmo export (data-...-batch-0000.zip, -0001, ...).
+ * Acha o export mais recente em Downloads e devolve todas as partes dele:
+ * formato novo `conversations-000.zip` (+ -001…) ou antigo `data-…-batch-NNNN.zip`.
+ * A escolha em si é pura (exportFiles.ts); aqui só a listagem da pasta.
  */
 export async function findLatestExportZips(): Promise<string[]> {
   let dir: string;
@@ -103,42 +107,90 @@ export async function findLatestExportZips(): Promise<string[]> {
   } catch {
     return [];
   }
-  const zips = entries.filter(
-    (e) => e.isFile && /^data-.*\.zip$/i.test(e.name)
-  );
+  const zips = entries.filter((e) => e.isFile && isExportZipName(e.name));
   if (zips.length === 0) return [];
 
-  const withTime = await Promise.all(
+  const files = await Promise.all(
     zips.map(async (e) => {
-      const full = await join(dir, e.name);
-      let m = 0;
+      const path = await join(dir, e.name);
+      let mtime = 0;
       try {
-        const s = await stat(full);
-        m = s.mtime ? new Date(s.mtime).getTime() : 0;
+        const s = await stat(path);
+        mtime = s.mtime ? new Date(s.mtime).getTime() : 0;
       } catch {
         /* ignora */
       }
-      return { name: e.name, full, m };
+      return { name: e.name, path, mtime };
     })
   );
-  withTime.sort((a, b) => b.m - a.m);
-  const newest = withTime[0];
-  const prefix = newest.name.replace(/batch-\d+\.zip$/i, "");
-  const group = withTime
-    .filter((z) => z.name.startsWith(prefix))
-    .map((z) => z.full);
-  return group.length ? group : [newest.full];
+  return pickLatestExport(files);
+}
+
+function fileName(path: string): string {
+  return path.split(/[\\/]/).pop() ?? path;
+}
+
+/** Abre o arquivo e entrega leitura com seek (para o diretório central do ZIP). */
+async function withRandomAccess<T>(
+  path: string,
+  fn: (ra: RandomAccess) => Promise<T>
+): Promise<T> {
+  const size = (await stat(path)).size;
+  const fh = await open(path, { read: true });
+  try {
+    return await fn({
+      size,
+      read: async (offset, length) => {
+        await fh.seek(offset, SeekMode.Start);
+        const out = new Uint8Array(length);
+        let got = 0;
+        while (got < length) {
+          const n = await fh.read(out.subarray(got));
+          if (!n) break;
+          got += n;
+        }
+        return out.subarray(0, got);
+      },
+    });
+  } finally {
+    await fh.close();
+  }
+}
+
+/** Leitura sequencial do .zip em pedaços (nunca o arquivo inteiro na memória). */
+async function zipSourceFromPath(path: string): Promise<ZipSource> {
+  const size = await stat(path).then(
+    (s) => s.size,
+    () => 0
+  );
+  return {
+    name: fileName(path),
+    size,
+    chunks: async function* () {
+      const fh = await open(path, { read: true });
+      try {
+        for (;;) {
+          const buf = new Uint8Array(CHUNK_BYTES);
+          const n = await fh.read(buf);
+          if (!n) break;
+          yield n === buf.length ? buf : buf.subarray(0, n);
+        }
+      } finally {
+        await fh.close();
+      }
+    },
+  };
 }
 
 /**
- * Verifica se um .zip tem a "assinatura" de um export de conversas do Claude:
- * descompacta em memória e confere se contém ao menos um `conversations.json`.
+ * Verifica se um .zip tem a "assinatura" de um export de conversas do Claude
+ * (um `conversations.json`) lendo só o diretório central no fim do arquivo —
+ * instantâneo mesmo para exports de centenas de MB.
  * Retorna false em qualquer falha (arquivo corrompido, não-zip, sem o JSON).
  */
 export async function isCompatibleClaudeZip(path: string): Promise<boolean> {
   try {
-    const bytes = await readFile(path);
-    return extractConversationsJson(bytes).length > 0;
+    return await withRandomAccess(path, isCompatibleExport);
   } catch {
     return false;
   }
@@ -149,34 +201,9 @@ export async function importClaudeZips(
   outDir: string,
   onProgress?: (p: ImportProgress) => void
 ): Promise<ImportResult> {
-  const all: ClaudeConversation[] = [];
-  let read = 0;
-
-  for (let zi = 0; zi < zipPaths.length; zi++) {
-    onProgress?.({
-      phase: `Lendo ZIP ${zi + 1}/${zipPaths.length}`,
-      done: zi,
-      total: zipPaths.length,
-    });
-    const bytes = await readFile(zipPaths[zi]);
-    let jsons: string[] = [];
-    try {
-      jsons = extractConversationsJson(bytes);
-    } catch (e) {
-      console.error("[import] falha ao descompactar", zipPaths[zi], e);
-    }
-    for (const j of jsons) {
-      try {
-        const convs = parseConversations(j);
-        all.push(...convs);
-        read += convs.length;
-      } catch (e) {
-        console.error("[import] falha ao parsear conversations.json", e);
-      }
-    }
-  }
-
-  const unique = dedupeByUuid(all);
+  const sources = await Promise.all(zipPaths.map(zipSourceFromPath));
+  const { collector, failed } = await collectConversations(sources, onProgress);
+  const unique = collector.unique;
   await mkdir(outDir, { recursive: true });
 
   // Anti-duplicata ENTRE importações: indexa o que já existe por uuid.
@@ -194,15 +221,12 @@ export async function importClaudeZips(
     if (i % 25 === 0) {
       onProgress?.({ phase: "Gravando notas .md (sem cortesias)", done: i, total: unique.length });
     }
-    const conv = unique[i];
-    const note = conversationToMarkdown(conv);
+    const { uuid, updated: convUpdated, note } = unique[i];
     if (!note) {
       empty++;
       continue;
     }
 
-    const uuid = String(conv.uuid ?? "");
-    const convUpdated = String(conv.updated_at ?? "");
     const target = chooseTargetName(note, uuid, byUuid, names);
 
     // Mesma conversa, mesma versão → nada a fazer (preserva mtime/ordem de importação).
@@ -224,7 +248,15 @@ export async function importClaudeZips(
   }
 
   onProgress?.({ phase: "Concluído", done: unique.length, total: unique.length });
-  return { read, unique: unique.length, written, updated, unchanged, empty };
+  return {
+    read: collector.read,
+    unique: unique.length,
+    written,
+    updated,
+    unchanged,
+    empty,
+    failed,
+  };
 }
 
 export type CortesiasResult = {

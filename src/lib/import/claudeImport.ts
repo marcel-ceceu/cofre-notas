@@ -1,7 +1,9 @@
 /**
  * Importar Claude — Etapa 1 (porta TS de _Core.ps1 / Invoke-Conversor).
- * Funções PURAS: dado o JSON do export, produz notas .md limpas (sem "thinking").
- * Sem I/O aqui — facilita teste. O I/O fica em runImport.ts.
+ * Funções PURAS: dada uma conversa do export, produz a nota .md limpa (só os
+ * blocos de texto — sem thinking, ferramentas nem a memória injetada).
+ * Sem I/O aqui — facilita teste. A leitura do .zip fica em exportStream.ts
+ * (em fluxo, com dedupe por uuid) e a gravação em runImport.ts / webVault.ts.
  */
 
 export type ClaudeContentBlock = { type?: string; text?: string };
@@ -32,33 +34,6 @@ export function extractMessageText(m: ClaudeMessage): string {
     return parts.join("\n\n").trim();
   }
   return String(m.text ?? "").trim();
-}
-
-/** Aceita array de conversas ou objeto único. */
-export function parseConversations(jsonText: string): ClaudeConversation[] {
-  const d = JSON.parse(jsonText);
-  return Array.isArray(d) ? d : [d];
-}
-
-/** Deduplica por uuid mantendo a conversa de updated_at mais recente. */
-export function dedupeByUuid(convs: ClaudeConversation[]): ClaudeConversation[] {
-  const best = new Map<string, ClaudeConversation>();
-  for (const c of convs) {
-    const u = String(c?.uuid ?? "") || cryptoRandom();
-    const cur = best.get(u);
-    if (!cur || String(c?.updated_at ?? "") > String(cur?.updated_at ?? "")) {
-      best.set(u, c);
-    }
-  }
-  return [...best.values()];
-}
-
-function cryptoRandom(): string {
-  try {
-    return crypto.randomUUID();
-  } catch {
-    return "id-" + Date.now().toString(36);
-  }
 }
 
 /**

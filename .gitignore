@@ -25,3 +25,12 @@ Thumbs.db
 
 # artefatos de build do TypeScript
 *.tsbuildinfo
+
+# Playwright (E2E) — relatórios, traces e o cache do export grande gerado pelos testes
+test-results/
+playwright-report/
+blob-report/
+e2e/.tmp/
+
+# worktrees temporarias de agentes do Claude Code
+.claude/worktrees/

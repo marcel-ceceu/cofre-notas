@@ -8,7 +8,7 @@
 | **Nome do app (UI / instalador)** | Cofre de Notas |
 | **Repositório GitHub** | [marcel-ceceu/cofre-notas](https://github.com/marcel-ceceu/cofre-notas) |
 | **Stack** | Tauri 2 + Vite + React 18 + Tailwind 4 |
-| **Versão atual** | **0.12.0** (tag `v0.12.0`) |
+| **Versão atual** | **0.13.0** (tag `v0.13.0`) |
 | **Auto-update** | GitHub Releases + `latest.json` + `UpdateBanner` |
 
 > O **nome da pasta local** segue a convenção `2606_*` do workspace. O **repo remoto** e o **identificador Tauri** (`com.marcel.cofre-notas`) mantêm-se `cofre-notas` para não quebrar releases nem updates já instalados.
@@ -16,6 +16,18 @@
 ---
 
 ## Entradas de histórico
+
+### 05/10/2026 — v0.13.0: Importar Claude no novo formato de export (`conversations-000.zip`) e leitura em fluxo
+
+**Contexto:** no fim de ago/2026 o export do Claude.ai mudou. Antes vinha `data-<id>-…-batch-0000.zip` com `conversations.json` + `projects/` + `memories.json` + `users.json`; agora vem `conversations-000.zip` (partes `-001`…; o navegador salva repetidos como `conversations-000 (1).zip`) só com `conversations.json`. Três problemas: (1) a auto-detecção em Downloads só procurava `data-*.zip`; (2) o histórico completo chega a **711 MB** de `conversations.json` (1290 conversas) — acima do limite de string do V8, o pipeline antigo (`unzipSync` + `strFromU8` + `JSON.parse`) quebrava com *"Cannot create a string longer than 0x1fffffe8 characters"*; (3) surgiu o bloco `injected_prompt_block` (snapshot da memória do usuário nas mensagens humanas) — já era descartado (só blocos `text` viram nota), agora com teste.
+
+**Mudança:** `lib/import/exportStream.ts` — leitura em fluxo: o .zip chega aos pedaços (desktop: `FileHandle` do plugin-fs; navegador: `Blob.slice`), é descompactado com `fflate.Unzip` e o array JSON é fatiado em bytes (`JsonObjectSplitter`); cada conversa vira nota na hora (`ConversationCollector`, dedupe por uuid igual ao antigo) e o JSON bruto é descartado. Validação do .zip lê só o diretório central (`listZipEntryNames`, com ZIP64) — instantânea, sem descompactar. `lib/import/exportFiles.ts` — escolha do export mais recente (formato novo e antigo; partes do mesmo export agrupadas numa janela de 1 h). `ImportResult.failed` lista .zip que não puderam ser lidos (aviso âmbar no modal, em vez de "sucesso com 0 conversas"). Textos do modal/painel citam `conversations-000.zip`. Capability ganhou `fs:allow-open`, `fs:allow-read`, `fs:allow-seek`. `zip.ts`, `parseConversations` e `dedupeByUuid` saíram (sem uso). Achados da revisão multi-agente, corrigidos: cortesias recompilava 119 regex por trecho — agora cache por lista + atalho exato (palavras fora das cortesias > 2 letras ⇒ não é cortesia): 1266 notas reais de ~15–20 s para 3,4 s, saída idêntica; o laço do navegador devolve a vez à tela a cada 20 notas; `putAll` (IndexedDB) rejeita no `abort` (cota estourada travava o modal); nome de cópia do Firefox (`conversations-000(1).zip`, sem espaço) reconhecido; parte auto-detectada inválida aparece como "Ignorado(s)".
+
+**E2E (novo):** Playwright 1.62.1 headless (`npm run test:e2e`, Vite na porta 5180; `--grep @grande` / `--grep-invert @grande`). `e2e/import-claude.spec.ts` + fixtures no layout real do export (cabeçalho local ZIP64 do `conversations-000.zip`, ordem real das entradas do antigo, JSON no estilo `json.dumps`). No código antigo: 8 ok, 2 falhas esperadas — texto `data-*.zip` e o export de 647 MB, que no navegador **não dava erro**: o `TextDecoder` devolvia string vazia e o modal mostrava "concluída" com **0 conversas**.
+
+**Validação:** `npm test` (92 casos), `tsc -b`, `tsc -p e2e/tsconfig.json`, `vite build`, `cargo check` (ACL gerada com as 3 permissões novas), `npm run test:e2e` (11/11, export de 647 MB em 8,2 s no Chromium). Testes temporários (apagados) sobre os exports reais de Downloads: agosto (98) e setembro (106) com notas **idênticas** às do pipeline antigo; export de 711 MB lido em 6,7 s (1290 conversas, ~500 MB de RSS), onde o antigo estoura; cortesias nova = antiga nas 1266 notas reais. O caminho desktop (FileHandle do Tauri) não tem E2E — validado por tipos, ACL e revisão.
+
+---
 
 ### 04/10/2026 — v0.12.0: busca dentro da nota (lupa flutuante / Ctrl+F)
 
@@ -91,6 +103,7 @@
 
 | Versão | Data (release) | Destaques |
 |--------|----------------|-----------|
+| **0.13.0** | 05/10/2026 | Importar Claude no export novo (`conversations-000.zip`, partes -001…): leitura em fluxo (export de 711 MB), validação pelo diretório central, aviso de .zip corrompido, cortesias ~5× mais rápida; E2E Playwright |
 | **0.12.0** | 04/10/2026 | Busca dentro da nota: lupa flutuante / Ctrl+F, sem maiúsculas/acentos, contador N de M, Enter/Shift+Enter, ocorrência atual em âmbar |
 | **0.11.1** | 19/09/2026 | Hotfix: janela invisível ao abrir (ACL sem `window:allow-show` + fallback de `show()` no Rust) |
 | **0.11.0** | 19/09/2026 | Badge de versão na toolbar + "Buscar atualizações" manual; rechecagem automática a cada 4h |

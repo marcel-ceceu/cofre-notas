@@ -21,7 +21,7 @@ const STEPS = [
   },
   {
     title: "Baixar o .zip",
-    body: "Salve o arquivo recebido na pasta de downloads — o pipeline localiza o mais recente sozinho.",
+    body: "Salve o conversations-000.zip (e as partes -001…, se houver) na pasta de downloads — o pipeline localiza o mais recente sozinho.",
   },
   {
     title: "Rodar o pipeline",

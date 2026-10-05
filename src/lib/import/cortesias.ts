@@ -28,19 +28,54 @@ export function prepareCortesias(rawPhrases: string[]): string[] {
   return [...set].sort((a, b) => b.length - a.length);
 }
 
-/** Resíduo após remover "marcel" e todas as cortesias; sem espaços. */
-function residual(piece: string, cort: string[]): string {
-  let n = norm(piece);
-  n = n.replace(/\bmarcel\b/g, " ");
-  for (const ph of cort) {
-    if (ph) n = n.replace(new RegExp("\\b" + escapeRegex(ph) + "\\b", "g"), " ");
+/**
+ * Pré-compilado por lista de cortesias: as regex (antes recriadas a cada
+ * chamada — 119 por trecho) e o conjunto de palavras que aparecem em alguma
+ * cortesia. Cache por identidade do array devolvido por prepareCortesias.
+ */
+type Compiled = { regexes: RegExp[]; words: Set<string> };
+const compiledCache = new WeakMap<string[], Compiled>();
+
+function compiled(cort: string[]): Compiled {
+  let c = compiledCache.get(cort);
+  if (!c) {
+    const words = new Set<string>(["marcel"]);
+    for (const ph of cort) for (const w of ph.split(" ")) if (w) words.add(w);
+    c = {
+      regexes: cort
+        .filter((ph) => ph)
+        .map((ph) => new RegExp("\\b" + escapeRegex(ph) + "\\b", "g")),
+      words,
+    };
+    compiledCache.set(cort, c);
   }
+  return c;
+}
+
+/** Resíduo após remover "marcel" e todas as cortesias; sem espaços. */
+function residual(n: string, regexes: RegExp[]): string {
+  n = n.replace(/\bmarcel\b/g, " ");
+  for (const re of regexes) n = n.replace(re, " ");
   return n.replace(/\s/g, "");
 }
 
-/** Um trecho é "cortesia" se sobra ≤ 2 caracteres após remover as cortesias. */
+/**
+ * Um trecho é "cortesia" se sobra ≤ 2 caracteres após remover as cortesias.
+ * Atalho exato: cada remoção leva só palavras inteiras que fazem parte de
+ * alguma cortesia; se as palavras que NÃO fazem já somam > 2 letras, o
+ * resíduo nunca cabe em 2 — dispensa as 119 substituições (turnos longos).
+ */
 function isCourtesy(piece: string, cort: string[]): boolean {
-  return residual(piece, cort).length <= 2;
+  const n = norm(piece);
+  const { regexes, words } = compiled(cort);
+  let keep = 0;
+  for (const w of n.split(" ")) {
+    if (w && !words.has(w)) {
+      keep += w.length;
+      if (keep > 2) return false;
+    }
+  }
+  return residual(n, regexes).length <= 2;
 }
 
 /** Apara frases de cortesia só do INÍCIO do parágrafo. */

@@ -2,16 +2,12 @@
  * Vault WEB — fallback universal para navegadores sem File System Access API
  * (Firefox, Safari, celular) e para o PWA instalado.
  * O usuário sobe o .zip do export; as notas são parseadas no navegador
- * (mesmo pipeline puro do desktop: fflate → parser → sem cortesias) e ficam
- * salvas no IndexedDB, offline. Anti-duplicata natural: a chave é o uuid.
+ * (mesmo pipeline do desktop: leitura em fluxo → parser → sem cortesias) e
+ * ficam salvas no IndexedDB, offline. Anti-duplicata natural: a chave é o uuid.
  */
-// "./zip" (fflate) é importado DINAMICAMENTE dentro das funções de importação —
-// este módulo entra no grafo de boot via fileSystem.ts e não pode arrastar o fflate.
-import {
-  parseConversations,
-  dedupeByUuid,
-  conversationToMarkdown,
-} from "./claudeImport";
+// "./exportStream" (fflate) é importado DINAMICAMENTE dentro das funções de
+// importação — este módulo entra no grafo de boot via fileSystem.ts e não pode
+// arrastar o fflate.
 import { removeCortesias, prepareCortesias } from "./cortesias";
 import { DEFAULT_CORTESIAS } from "./cortesias.rules";
 import { parseCreatedAt } from "../noteDates";
@@ -62,7 +58,16 @@ function putAll(db: IDBDatabase, notes: StoredNote[]): Promise<void> {
     for (const n of notes) store.put(n);
     tx.oncomplete = () => resolve();
     tx.onerror = () => reject(tx.error);
+    // Falha no commit (ex.: cota de armazenamento) só dispara "abort" —
+    // sem isto a promessa nunca termina e o modal fica travado em "Salvando".
+    tx.onabort = () =>
+      reject(tx.error ?? new Error("Gravação no navegador abortada (espaço de armazenamento?)"));
   });
+}
+
+/** Devolve a vez ao navegador (pinta o progresso) — laços longos no thread da tela. */
+function yieldToUi(): Promise<void> {
+  return new Promise((r) => setTimeout(r, 0));
 }
 
 /** Atualiza o conteúdo de uma nota já salva (por uuid). Usado ao carimbar o cabeçalho. */
@@ -110,12 +115,14 @@ export async function loadWebVaultNotes(): Promise<Note[]> {
   return notes;
 }
 
-/** Mesmo critério do desktop: o zip precisa conter conversations.json. */
+/**
+ * Mesmo critério do desktop: o zip precisa conter conversations.json.
+ * Lê só o diretório central (fim do arquivo) — não carrega o .zip inteiro.
+ */
 export async function isCompatibleClaudeZipFile(f: File): Promise<boolean> {
   try {
-    const { extractConversationsJson } = await import("./zip");
-    const bytes = new Uint8Array(await f.arrayBuffer());
-    return extractConversationsJson(bytes).length > 0;
+    const { isCompatibleExport, blobRandomAccess } = await import("./exportStream");
+    return await isCompatibleExport(blobRandomAccess(f));
   } catch {
     return false;
   }
@@ -123,35 +130,19 @@ export async function isCompatibleClaudeZipFile(f: File): Promise<boolean> {
 
 /**
  * Importa os .zip no navegador e grava as notas (sem cortesias) no IndexedDB.
+ * Lê cada .zip aos pedaços (aguenta conversations.json de centenas de MB).
  * Anti-duplicata por uuid: regrava a mesma conversa, pula versões já em dia.
  */
 export async function importClaudeZipsWeb(
   files: File[],
   onProgress?: (p: ImportProgress) => void
 ): Promise<ImportResult> {
-  const { extractConversationsJson } = await import("./zip");
-  const all: ReturnType<typeof parseConversations> = [];
-  let read = 0;
-
-  for (let i = 0; i < files.length; i++) {
-    onProgress?.({
-      phase: `Lendo ZIP ${i + 1}/${files.length}`,
-      done: i,
-      total: files.length,
-    });
-    try {
-      const bytes = new Uint8Array(await files[i].arrayBuffer());
-      for (const j of extractConversationsJson(bytes)) {
-        const convs = parseConversations(j);
-        all.push(...convs);
-        read += convs.length;
-      }
-    } catch (e) {
-      console.error("[import-web] falha ao ler", files[i].name, e);
-    }
-  }
-
-  const unique = dedupeByUuid(all);
+  const { collectConversations, blobZipSource } = await import("./exportStream");
+  const { collector, failed } = await collectConversations(
+    files.map((f) => blobZipSource(f.name, f)),
+    onProgress
+  );
+  const unique = collector.unique;
   const cort = prepareCortesias(DEFAULT_CORTESIAS);
 
   const db = await openDb();
@@ -166,21 +157,19 @@ export async function importClaudeZipsWeb(
   let empty = 0;
 
   for (let i = 0; i < unique.length; i++) {
-    if (i % 50 === 0) {
+    if (i % 20 === 0) {
       onProgress?.({
         phase: "Convertendo notas (sem cortesias)",
         done: i,
         total: unique.length,
       });
+      await yieldToUi();
     }
-    const conv = unique[i];
-    const note = conversationToMarkdown(conv);
+    const { uuid, updated: convUpdated, note } = unique[i];
     if (!note) {
       empty++;
       continue;
     }
-    const uuid = String(conv.uuid ?? "");
-    const convUpdated = String(conv.updated_at ?? "");
     const existed = byUuid.has(uuid);
     if (existed && convUpdated && byUuid.get(uuid) === convUpdated) {
       unchanged++;
@@ -206,5 +195,13 @@ export async function importClaudeZipsWeb(
   await putAll(db, toPut);
 
   onProgress?.({ phase: "Concluído", done: unique.length, total: unique.length });
-  return { read, unique: unique.length, written, updated, unchanged, empty };
+  return {
+    read: collector.read,
+    unique: unique.length,
+    written,
+    updated,
+    unchanged,
+    empty,
+    failed,
+  };
 }
