@@ -7,7 +7,7 @@ import { highlight } from "../lib/highlight";
 import { formatResults, copyToClipboard } from "../lib/copyResults";
 import { runCopyFiles } from "../lib/export/runExport";
 import { DEFAULT_EXPORT_DEST_ABS } from "../lib/export/dest";
-import { isTauriRuntime } from "../lib/fileSystem.tauri";
+import { isDesktopShell } from "../lib/runtime/shell";
 import { ResultContextMenu } from "./ResultContextMenu";
 
 const DATE_FMT = new Intl.DateTimeFormat("pt-BR");
@@ -115,13 +115,15 @@ export function NoteList({ onRequestSync }: Props) {
 
   async function quickExportSelected() {
     const ordered = results.filter((n) => selected.has(n.path));
-    if (!isTauriRuntime() || !ordered.length || exportBusy) return;
+    if (!ordered.length || exportBusy) return;
     setExportBusy(true);
     setExportMsg(null);
     try {
       const r = await runCopyFiles(ordered, DEFAULT_EXPORT_DEST_ABS);
       setExportMsg(
-        `${r.copied}/${r.total} em ${DEFAULT_EXPORT_DEST_ABS}\\${r.subfolder}`
+        isDesktopShell()
+          ? `${r.copied}/${r.total} em ${DEFAULT_EXPORT_DEST_ABS}\\${r.subfolder}`
+          : `${r.copied}/${r.total} — download cofre-notas-${r.subfolder}.zip`
       );
       setSelectedPaths([]);
       setAnchor(null);
@@ -173,16 +175,18 @@ export function NoteList({ onRequestSync }: Props) {
               limpar
             </button>
           </div>
-          {isTauriRuntime() && (
-            <button
-              type="button"
-              disabled={exportBusy}
-              onClick={() => void quickExportSelected()}
-              className="tb-btn w-full justify-center border-[var(--accent-ring)] bg-[var(--paper-raised)] text-[var(--accent)] hover:bg-[var(--accent-ring)] hover:text-[var(--accent-hover)]"
-            >
-              {exportBusy ? "A exportar…" : "Exportar rápido (copiar arquivos)"}
-            </button>
-          )}
+          <button
+            type="button"
+            disabled={exportBusy}
+            onClick={() => void quickExportSelected()}
+            className="tb-btn w-full justify-center border-[var(--accent-ring)] bg-[var(--paper-raised)] text-[var(--accent)] hover:bg-[var(--accent-ring)] hover:text-[var(--accent-hover)]"
+          >
+            {exportBusy
+              ? "A exportar…"
+              : isDesktopShell()
+                ? "Exportar rápido (copiar arquivos)"
+                : "Exportar rápido (download .zip)"}
+          </button>
           {exportMsg && (
             <p className="text-[10px] leading-snug break-words text-[var(--ink-muted)]">
               {exportMsg}

@@ -12,7 +12,11 @@ import {
   stat,
 } from "@tauri-apps/plugin-fs";
 import { join, downloadDir } from "@tauri-apps/api/path";
-import { parseNoteMeta, chooseTargetName } from "./claudeImport";
+import {
+  parseNoteMeta,
+  chooseTargetName,
+  type ImportedNote,
+} from "./claudeImport";
 import {
   collectConversations,
   isCompatibleExport,
@@ -87,6 +91,68 @@ export async function scanExistingNotes(
     }
   }
   return { byUuid, names };
+}
+
+export type ImportedNoteRow = {
+  uuid: string;
+  updated: string;
+  note: ImportedNote | null;
+};
+
+/** Grava lote com dedupe uuid/updated e cortesias (ZIP ou Claude Web). */
+export async function writeImportedNoteBatch(
+  outDir: string,
+  rows: ImportedNoteRow[],
+  onProgress?: (p: ImportProgress) => void
+): Promise<Pick<ImportResult, "written" | "updated" | "unchanged" | "empty">> {
+  await mkdir(outDir, { recursive: true });
+  const { byUuid, names } = await scanExistingNotes(outDir, onProgress);
+  const cort = prepareCortesias(DEFAULT_CORTESIAS);
+
+  let written = 0;
+  let updated = 0;
+  let unchanged = 0;
+  let empty = 0;
+
+  for (let i = 0; i < rows.length; i++) {
+    if (i % 25 === 0) {
+      onProgress?.({
+        phase: "Gravando notas .md (sem cortesias)",
+        done: i,
+        total: rows.length,
+      });
+    }
+    const { uuid, updated: convUpdated, note } = rows[i];
+    if (!note) {
+      empty++;
+      continue;
+    }
+
+    const target = chooseTargetName(note, uuid, byUuid, names);
+
+    if (
+      target.existed &&
+      convUpdated &&
+      byUuid.get(uuid)?.updated === convUpdated
+    ) {
+      unchanged++;
+      continue;
+    }
+
+    const cleaned = removeCortesias(note.content, cort);
+    try {
+      await writeTextFile(await join(outDir, target.name), cleaned);
+      if (target.existed) updated++;
+      else written++;
+      names.add(target.name);
+      if (uuid) byUuid.set(uuid, { name: target.name, updated: convUpdated });
+    } catch (e) {
+      console.error("[import] falha ao gravar", target.name, e);
+    }
+  }
+
+  onProgress?.({ phase: "Concluído", done: rows.length, total: rows.length });
+  return { written, updated, unchanged, empty };
 }
 
 /**
@@ -204,50 +270,12 @@ export async function importClaudeZips(
   const sources = await Promise.all(zipPaths.map(zipSourceFromPath));
   const { collector, failed } = await collectConversations(sources, onProgress);
   const unique = collector.unique;
-  await mkdir(outDir, { recursive: true });
+  const { written, updated, unchanged, empty } = await writeImportedNoteBatch(
+    outDir,
+    unique,
+    onProgress
+  );
 
-  // Anti-duplicata ENTRE importações: indexa o que já existe por uuid.
-  const { byUuid, names } = await scanExistingNotes(outDir, onProgress);
-
-  // Fluxo oficial: grava SOMENTE a versão sem cortesias.
-  const cort = prepareCortesias(DEFAULT_CORTESIAS);
-
-  let written = 0;
-  let updated = 0;
-  let unchanged = 0;
-  let empty = 0;
-
-  for (let i = 0; i < unique.length; i++) {
-    if (i % 25 === 0) {
-      onProgress?.({ phase: "Gravando notas .md (sem cortesias)", done: i, total: unique.length });
-    }
-    const { uuid, updated: convUpdated, note } = unique[i];
-    if (!note) {
-      empty++;
-      continue;
-    }
-
-    const target = chooseTargetName(note, uuid, byUuid, names);
-
-    // Mesma conversa, mesma versão → nada a fazer (preserva mtime/ordem de importação).
-    if (target.existed && convUpdated && byUuid.get(uuid)?.updated === convUpdated) {
-      unchanged++;
-      continue;
-    }
-
-    const cleaned = removeCortesias(note.content, cort);
-    try {
-      await writeTextFile(await join(outDir, target.name), cleaned);
-      if (target.existed) updated++;
-      else written++;
-      names.add(target.name);
-      if (uuid) byUuid.set(uuid, { name: target.name, updated: convUpdated });
-    } catch (e) {
-      console.error("[import] falha ao gravar", target.name, e);
-    }
-  }
-
-  onProgress?.({ phase: "Concluído", done: unique.length, total: unique.length });
   return {
     read: collector.read,
     unique: unique.length,

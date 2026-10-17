@@ -1,5 +1,5 @@
-mod cursor;
 mod chatgpt;
+mod cursor;
 mod vault;
 
 use tauri::Manager;

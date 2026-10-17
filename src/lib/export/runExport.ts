@@ -18,6 +18,13 @@ import {
   type LlmsRow,
 } from "./consolidate";
 import { summarizeConversation } from "./ai";
+import { isDesktopShell } from "../runtime/shell";
+import {
+  runConsolidateAIWeb,
+  runConsolidateWeb,
+  runCopyFilesWeb,
+  runLlmsWeb,
+} from "./runExportWeb";
 
 export type ExportProgress = { phase: string; done: number; total: number };
 export type CopyFilesResult = { copied: number; total: number; subfolder: string };
@@ -29,6 +36,8 @@ export async function runCopyFiles(
   destDir: string,
   onProgress?: (p: ExportProgress) => void
 ): Promise<CopyFilesResult> {
+  if (!isDesktopShell()) return runCopyFilesWeb(notes, onProgress);
+
   const sub = buildSubfolderName();
   const subDir = await join(destDir, sub);
   await mkdir(subDir, { recursive: true });
@@ -61,6 +70,8 @@ export async function runConsolidate(
   vaultLabel: string,
   onProgress?: (p: ExportProgress) => void
 ): Promise<ConsolidateResult> {
+  if (!isDesktopShell()) return runConsolidateWeb(notes, vaultLabel, onProgress);
+
   onProgress?.({ phase: "Montando consolidado", done: 0, total: notes.length });
 
   const convs: MergeConv[] = notes.map((n) => {
@@ -98,6 +109,17 @@ export async function runConsolidateAI(
   prompt: string,
   onProgress?: (p: ExportProgress) => void
 ): Promise<ConsolidateAIResult> {
+  if (!isDesktopShell()) {
+    return runConsolidateAIWeb(
+      notes,
+      vaultLabel,
+      apiKey,
+      model,
+      prompt,
+      onProgress
+    );
+  }
+
   const convs: MergeConv[] = [];
   let failed = 0;
 
@@ -148,6 +170,10 @@ export async function runLlms(
   prompt: string,
   onProgress?: (p: ExportProgress) => void
 ): Promise<LlmsResult> {
+  if (!isDesktopShell()) {
+    return runLlmsWeb(notes, apiKey, model, prompt, onProgress);
+  }
+
   const sub = buildSubfolderName();
   const subDir = await join(destDir, sub);
   await mkdir(subDir, { recursive: true });

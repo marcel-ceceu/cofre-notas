@@ -1,0 +1,161 @@
+# -*- coding: utf-8 -*-
+r"""
+261017_1105_transcreve_wa7d.py - Fase 2.3: transcreve os audios da semana com o motor do DITADOR
+(sidecar_transcribe.py, --tipo Simples, Whisper na GPU) e grava:
+  C:\WA7D\resultado\transcricoes_<ini>_<fim>.json   (msg_uid + texto, para conferencia)
+  C:\WA7D\resultado\transcricoes_<ini>_<fim>.sql    (UPDATE em apiwhats2.wa_mensagem.texto - a transcricao do audio)
+Reexecutar e seguro: audio que ja tem .txt nao vazio ao lado e reaproveitado sem passar pela GPU de novo.
+.txt vazio (o motor grava mesmo quando o Whisper falha) volta para a fila.
+Caminhos verificados em 17/10/2026 (PC ADMIN): venv do DITADOR, sidecar do projeto (fallback: copia do app instalado).
+"""
+import json, os, sqlite3, subprocess, sys
+from datetime import datetime, timedelta, timezone
+
+PASTA      = r"C:\WA7D"
+DB         = os.path.join(PASTA, "msgstore.db")
+SAIDA      = os.path.join(PASTA, "resultado")
+CONTA      = "45999900040"
+DIAS       = 7
+FUSO       = timezone(timedelta(hours=-3))
+PY_VENV    = r"C:\Users\Windows\transcritor-audio\.venv\Scripts\python.exe"
+SIDECARS   = [r"C:\3.1-Projetos2\2606DITADOR-AppDigitalizadorAudioTexto\src-tauri\sidecar_transcribe.py",
+              r"C:\Users\Windows\AppData\Local\Descritor de Audio Video\sidecar_transcribe.py"]
+TIPO       = "Simples"
+
+def lit(v):
+    if v is None: return "NULL"
+    return "'" + str(v).replace("\x00", "").replace("'", "''") + "'"
+
+def lotes(itens, limite=30000):
+    """O Windows corta a linha de comando perto de 32 mil caracteres."""
+    lote, usado = [], 0
+    for it in itens:
+        extra = len(it["arquivo"]) + 1
+        if lote and usado + extra > limite:
+            yield lote
+            lote, usado = [], 0
+        lote.append(it)
+        usado += extra
+    if lote:
+        yield lote
+
+def rodar_motor(sidecar, a_transcrever, por_arquivo, log_path):
+    cmd = [PY_VENV, sidecar, "--tipo", TIPO, "--audios"] + [it["arquivo"] for it in a_transcrever]
+    env = dict(os.environ, PYTHONUTF8="1", PYTHONIOENCODING="utf-8")
+    logerr = open(log_path, "a", encoding="utf-8")
+    proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=logerr, text=True, encoding="utf-8", env=env)
+    n = len(a_transcrever)
+    try:
+        for linha in proc.stdout:
+            linha = linha.strip()
+            if not linha.startswith("{"): continue
+            try: ev = json.loads(linha)
+            except Exception: continue
+            e = ev.get("event")
+            if e == "loading": print("CARREGANDO modelo", ev.get("model"))
+            elif e == "device": print("Dispositivo:", ev.get("device"), ev.get("compute"))
+            elif e == "transcribing":
+                i = ev.get("i", 0); print(f"PROCESSANDO {i}/{n} ({int(i*100/n) if n else 0}%) {ev.get('name')}", flush=True)
+            elif e == "saved":
+                it = por_arquivo.get((ev.get("path") or "").lower())
+                if not it: continue
+                texto = (ev.get("text") or "").strip()
+                if texto:
+                    it["texto"] = texto
+                    it["status"] = "transcrito"
+                elif not str(it["status"]).startswith("erro"):
+                    it["status"] = "vazio"
+            elif e == "erro":
+                it = por_arquivo.get((ev.get("path") or "").lower())
+                if it: it["status"] = "erro: " + str(ev.get("msg"))[:120]
+                else: print("ERRO motor:", ev.get("msg"))
+        proc.wait()
+    finally:
+        logerr.close()
+    return proc.returncode
+
+def main():
+    for p in (DB, PY_VENV):
+        if not os.path.exists(p): print("ERRO: nao achei", p); sys.exit(1)
+    sidecar = next((s for s in SIDECARS if os.path.exists(s)), None)
+    if not sidecar: print("ERRO: sidecar_transcribe.py nao encontrado"); sys.exit(1)
+    os.makedirs(SAIDA, exist_ok=True)
+
+    agora = datetime.now(FUSO)
+    ini = (agora - timedelta(days=DIAS)).replace(hour=0, minute=0, second=0, microsecond=0)
+    ini_ms = int(ini.timestamp() * 1000)
+    tag = f"transcricoes_{ini:%Y%m%d}_{agora:%Y%m%d}"
+
+    con = sqlite3.connect(DB); con.row_factory = sqlite3.Row
+    rows = con.execute("""
+        SELECT m.key_id, m.timestamp, j.raw_string, mm.file_path, mm.media_duration
+        FROM message m
+        JOIN chat c ON c._id = m.chat_row_id
+        JOIN jid j ON j._id = c.jid_row_id
+        JOIN message_media mm ON mm.message_row_id = m._id
+        WHERE mm.mime_type LIKE 'audio/%' AND m.timestamp >= ? AND j.server <> 'broadcast'
+        ORDER BY m.timestamp""", (ini_ms,)).fetchall()
+
+    itens, faltam = [], []
+    for r in rows:
+        rel = (r["file_path"] or "").replace("Media/", "", 1).replace("/", "\\")
+        local = os.path.join(PASTA, rel)
+        it = {"chave": r["raw_string"], "msg_uid": r["key_id"], "arquivo": local,
+              "enviado_em": datetime.fromtimestamp(r["timestamp"]/1000, FUSO).isoformat(),
+              "duracao_s": r["media_duration"], "texto": None, "status": "pendente"}
+        if os.path.exists(local): itens.append(it)
+        else: it["status"] = "arquivo_ausente"; faltam.append(it)
+
+    # reaproveita .txt ja existente (execucao anterior)
+    a_transcrever = []
+    for it in itens:
+        txt = os.path.splitext(it["arquivo"])[0] + ".txt"
+        texto = ""
+        if os.path.exists(txt):
+            with open(txt, encoding="utf-8-sig") as f: texto = f.read().strip()
+        if texto:
+            it["texto"] = texto
+            it["status"] = "reaproveitado"
+        else:
+            a_transcrever.append(it)
+
+    print(f"Periodo {ini:%d/%m/%Y} a {agora:%d/%m/%Y} | audios no banco: {len(rows)} | encontrados: {len(itens)} | ausentes: {len(faltam)}")
+    print(f"Ja transcritos (txt ao lado): {len(itens)-len(a_transcrever)} | a transcrever agora: {len(a_transcrever)}")
+    print(f"Motor: {sidecar}")
+
+    por_arquivo = {it["arquivo"].lower(): it for it in a_transcrever}
+    log_path = os.path.join(SAIDA, tag + "_motor.log")
+    if os.path.exists(log_path): os.remove(log_path)
+    codigos = []
+    for lote in lotes(a_transcrever):
+        codigos.append(rodar_motor(sidecar, lote, por_arquivo, log_path))
+    if codigos:
+        print("Motor terminou com codigo", codigos[-1])
+
+    todos = itens + faltam
+    ok = [it for it in todos if it["texto"]]
+    jpath = os.path.join(SAIDA, tag + ".json")
+    with open(jpath, "w", encoding="utf-8") as f:
+        json.dump({"conta": CONTA, "inicio": ini.isoformat(), "fim": agora.isoformat(), "itens": todos}, f, ensure_ascii=False, indent=1)
+
+    linhas = [f"-- {tag} | gerado {agora:%d/%m/%Y %H:%M} | conta {CONTA} | {len(ok)} transcricoes",
+              "-- wa_mensagem nao tem coluna transcricao: o texto do audio fica em texto.",
+              "-- Reexecutar so sobrescreve o mesmo texto. So mexe em mensagem tipo audio.", ""]
+    for it in ok:
+        linhas.append("UPDATE apiwhats2.wa_mensagem SET texto = " + lit(it["texto"]) +
+                      " WHERE msg_uid = " + lit(it["msg_uid"]) +
+                      " AND tipo = 'audio'" +
+                      " AND conversa_id = (SELECT id FROM apiwhats2.wa_conversa WHERE conta = " + lit(CONTA) +
+                      " AND chave = " + lit(it["chave"]) + ");")
+    spath = os.path.join(SAIDA, tag + ".sql")
+    with open(spath, "w", encoding="utf-8") as f: f.write("\n".join(linhas) + "\n")
+
+    status = {}
+    for it in todos: status[it["status"].split(":")[0]] = status.get(it["status"].split(":")[0], 0) + 1
+    print("Status:", ", ".join(f"{k}={v}" for k, v in status.items()))
+    print("Com texto:", len(ok), "| vazios/erro:", len(todos) - len(ok))
+    print("JSON:", jpath); print("SQL :", spath)
+    print("CONCLUIDO" if len(ok) == len(todos) else "CONCLUIDO COM PENDENCIAS")
+
+if __name__ == "__main__":
+    main()

@@ -1,0 +1,35 @@
+---
+description: PWA e app Tauri devem expor a mesma UI e fluxos (paridade de produto)
+alwaysApply: true
+---
+
+# Paridade PWA ↔ Tauri (Cofre de Notas)
+
+## Princípio
+
+O **PWA** e o **app instalado (Tauri)** são duas interfaces do **mesmo produto**. Mesmos botões, mesmos painéis, mesmos textos de ação. Não esconder funcionalidade no PWA com `disabled` sem equivalente.
+
+Use `isDesktopShell()` de `src/lib/runtime/shell.ts` (alias de `isTauriRuntime()`).
+
+## Onde diverge o armazenamento (OK)
+
+| Recurso | Tauri | PWA |
+|---------|-------|-----|
+| Cofre aberto | Pasta no disco | IndexedDB (`webdb`) ou File System Access |
+| Import Claude | `.zip` → pasta | `.zip` → IndexedDB |
+| Export / consolidar | Grava em pasta | **Download** (.zip / .md) via `runExportWeb.ts` |
+
+Orchestre em `runExport.ts`: ramo desktop vs `runExportWeb.ts`.
+
+## Exceções reais (mesma UI, mensagem clara)
+
+- **Cursor — inventário automático**: só Tauri (`scan_cursor_transcripts`). No PWA, abrir o mesmo modal e explicar que é preciso o app instalado.
+- **ChatGPT (teste)**: Tauri injeta exportador; PWA abre `chatgpt.com` (`openChatGptTeste()`).
+- **Piloto memória (PowerShell)**: execução local só no Tauri.
+- **Updater**: só Tauri; PWA recarrega a página.
+
+## Ao implementar features novas
+
+1. UI idêntica nos dois runtimes.
+2. I/O em `run*.ts` com ramo PWA quando fizer sentido.
+3. Evitar copy do tipo “só no desktop” — preferir “no PWA: download / cofre neste dispositivo”.

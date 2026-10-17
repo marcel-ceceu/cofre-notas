@@ -3,7 +3,7 @@ import { useVaultStore } from "../store/vaultStore";
 import { useSearchResults } from "../lib/useSearchResults";
 import { runCopyFiles } from "../lib/export/runExport";
 import { DEFAULT_EXPORT_DEST_ABS } from "../lib/export/dest";
-import { isTauriRuntime } from "../lib/fileSystem.tauri";
+import { isDesktopShell } from "../lib/runtime/shell";
 import { SearchIcon } from "./icons";
 
 export function SearchBox() {
@@ -64,13 +64,15 @@ export function SearchBox() {
     prefs.searchMode === "tokens" ? "palavras soltas" : "texto contínuo";
 
   async function quickExportAll() {
-    if (!isTauriRuntime() || filtered.length === 0 || quickBusy) return;
+    if (filtered.length === 0 || quickBusy) return;
     setQuickBusy(true);
     setQuickMsg(null);
     try {
       const r = await runCopyFiles(filtered, DEFAULT_EXPORT_DEST_ABS);
       setQuickMsg(
-        `${r.copied}/${r.total} arquivo(s) em ${DEFAULT_EXPORT_DEST_ABS}\\${r.subfolder}`
+        isDesktopShell()
+          ? `${r.copied}/${r.total} arquivo(s) em ${DEFAULT_EXPORT_DEST_ABS}\\${r.subfolder}`
+          : `${r.copied}/${r.total} arquivo(s) — download cofre-notas-${r.subfolder}.zip`
       );
     } catch (e) {
       setQuickMsg((e as Error).message ?? String(e));
@@ -110,7 +112,7 @@ export function SearchBox() {
         </span>
       </div>
 
-      {query.trim() && filtered.length > 0 && isTauriRuntime() && (
+      {query.trim() && filtered.length > 0 && (
         <div className="space-y-1 pt-1">
           <button
             type="button"

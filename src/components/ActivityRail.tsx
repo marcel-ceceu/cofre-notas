@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { SyncIcon, PilotoIcon } from "./icons";
 
-export type RailView = "notes" | "import" | "consolidate";
+export type RailView = "notes" | "import" | "claude-web" | "consolidate";
 
 type Item = {
   view: RailView;
@@ -35,7 +35,7 @@ const ITEMS: Item[] = [
   {
     view: "import",
     label: "Importar",
-    hint: "Pipeline: exportação do Claude.ai / transcripts do Cursor → notas .md no cofre",
+    hint: "Transcripts locais do Cursor IDE → notas .md em Cursor\\",
     icon: (
       <svg
         viewBox="0 0 20 20"

@@ -1,7 +1,7 @@
 import { lazy, Suspense, useEffect, useRef, useState } from "react";
-import { invoke } from "@tauri-apps/api/core";
 import { useVaultStore } from "./store/vaultStore";
 import { isTauriRuntime } from "./lib/fileSystem.tauri";
+import { openChatGptTeste } from "./lib/runtime/shell";
 import {
   pickVaultDirectory,
   readVault,
@@ -23,7 +23,11 @@ import { UpdateBanner } from "./components/UpdateBanner";
 import { VersionBadge } from "./components/VersionBadge";
 import { ToolbarActions } from "./components/ToolbarActions";
 import { ActivityRail, type RailView } from "./components/ActivityRail";
-import { ImportPanel } from "./components/ImportPanel";
+import {
+  ClaudeWebPanel,
+  CLAUDE_WEB_TOOLBAR_TITLE,
+} from "./components/ClaudeWebPanel";
+import { ImportPanel, IMPORT_TOOLBAR_TITLE } from "./components/ImportPanel";
 import { ConsolidatePanel } from "./components/ConsolidatePanel";
 import { useSidebarWidth } from "./lib/useSidebarWidth";
 
@@ -39,17 +43,11 @@ const PilotoMemoriaModal = lazy(() =>
     default: m.PilotoMemoriaModal,
   }))
 );
-const ImportClaudeModal = lazy(() =>
-  import("./components/ImportClaudeModal").then((m) => ({
-    default: m.ImportClaudeModal,
-  }))
-);
 const SearchSettingsModal = lazy(() =>
   import("./components/SearchSettingsModal").then((m) => ({
     default: m.SearchSettingsModal,
   }))
 );
-
 export default function App() {
   const notes = useVaultStore((s) => s.notes);
   const loading = useVaultStore((s) => s.loading);
@@ -65,7 +63,6 @@ export default function App() {
   const activePath = useVaultStore((s) => s.activePath);
   const selectedPaths = useVaultStore((s) => s.selectedPaths);
   const setSyncScope = useVaultStore((s) => s.setSyncScope);
-  const [importOpen, setImportOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [syncOpen, setSyncOpen] = useState(false);
   const [pilotoOpen, setPilotoOpen] = useState(false);
@@ -245,8 +242,8 @@ export default function App() {
 
         <button
           onClick={() => setRailView("import")}
-          className="tb-btn"
-          title="Abrir o fluxo de importação de conversas do Claude.ai"
+          className={`tb-btn ${railView === "import" ? "tb-btn--section" : ""}`}
+          title={IMPORT_TOOLBAR_TITLE}
         >
           <svg
             viewBox="0 0 16 16"
@@ -267,12 +264,26 @@ export default function App() {
         </button>
 
         <button
-          onClick={() => invoke("abrir_chatgpt").catch((e) => setError(String(e)))}
-          disabled={!isTauriRuntime()}
+          onClick={() =>
+            openChatGptTeste().catch((e) => setError(String(e)))
+          }
           className="tb-btn"
-          title="TESTE: abre o ChatGPT numa janela interna com o exportador (⬇ GPT) injetado"
+          title={
+            isTauriRuntime()
+              ? "TESTE: janela interna com exportador (⬇ GPT) injetado"
+              : "TESTE: abre chatgpt.com (exportador só no app instalado)"
+          }
         >
           ChatGPT (teste)
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setRailView("claude-web")}
+          className={`tb-btn ${railView === "claude-web" ? "tb-btn--section" : ""}`}
+          title={CLAUDE_WEB_TOOLBAR_TITLE}
+        >
+          Claude Web
         </button>
 
         <div className="flex-1" />
@@ -330,6 +341,10 @@ export default function App() {
           )}
 
           {railView === "import" && <ImportPanel onImported={handleImported} />}
+
+          {railView === "claude-web" && (
+            <ClaudeWebPanel onImported={handleImported} />
+          )}
 
           {railView === "consolidate" && <ConsolidatePanel />}
         </aside>
@@ -403,12 +418,6 @@ export default function App() {
           <SearchSettingsModal onClose={() => setSettingsOpen(false)} />
         )}
 
-        {importOpen && (
-          <ImportClaudeModal
-            onClose={() => setImportOpen(false)}
-            onImported={handleImported}
-          />
-        )}
       </Suspense>
     </div>
   );

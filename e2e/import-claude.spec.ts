@@ -40,13 +40,14 @@ import {
 
 // ───────────────────────── textos/seletores da UI ─────────────────────────
 
-const TOOLBAR_IMPORT_TITLE = "Abrir o fluxo de importação de conversas do Claude.ai";
-const RUN_PIPELINE = "Executar pipeline de importação";
-const DIALOG_TITLE = "Importar conversas do Claude";
-const CONTINUE = "Já tenho o .zip → continuar";
+const TOOLBAR_CLAUDE_WEB_TITLE =
+  "Claude Web — importação de conversas do Claude.ai";
+const RUN_PIPELINE = "Iniciar processo de importação Claude Web";
+const DIALOG_TITLE = "Importação Claude Web";
 const REJECTED_PREFIX = "Ignorado(s) por não parecer(em) um export do Claude:";
-const DONE = "Importação concluída (sem duplicatas).";
-const FINISH = "Concluir e recarregar";
+const DONE = /conversão concluída/;
+const FINISH = "Recarregar cofre";
+const ZIP_INPUT = 'input[type="file"][accept*="zip"]';
 /** Banco/store do cofre web (src/lib/import/webVault.ts). */
 const WEB_DB = "cofre-notas-webvault";
 const WEB_STORE = "notes";
@@ -57,7 +58,7 @@ const BIG_STEP_TIMEOUT = 10 * 60_000;
 // ───────────────────────── helpers do fluxo ─────────────────────────
 
 async function openImportDialog(page: Page): Promise<Locator> {
-  await page.getByTitle(TOOLBAR_IMPORT_TITLE).click();
+  await page.getByTitle(TOOLBAR_CLAUDE_WEB_TITLE).click();
   await page.getByRole("button", { name: RUN_PIPELINE }).click();
   const dialog = page.getByRole("dialog", { name: DIALOG_TITLE });
   await expect(dialog).toBeVisible();
@@ -66,8 +67,9 @@ async function openImportDialog(page: Page): Promise<Locator> {
 
 async function goToZipStep(page: Page): Promise<Locator> {
   const dialog = await openImportDialog(page);
-  await dialog.getByRole("button", { name: CONTINUE }).click();
-  await expect(dialog.locator('input[type="file"]')).toBeAttached();
+  await dialog.getByRole("button", { name: "Próximo →" }).click();
+  await dialog.getByRole("button", { name: "Já baixei o .zip → conversão" }).click();
+  await expect(dialog.locator(ZIP_INPUT)).toBeAttached();
   return dialog;
 }
 
@@ -75,7 +77,7 @@ type ZipPayload = ReturnType<typeof zipPayload>;
 
 /** Buffers (zips pequenos) ou caminho em disco (export grande). */
 async function chooseZips(dialog: Locator, files: string | readonly ZipPayload[]): Promise<void> {
-  await dialog.locator('input[type="file"]').setInputFiles(files);
+  await dialog.locator(ZIP_INPUT).setInputFiles(files);
 }
 
 function acceptedItem(dialog: Locator, fileName: string): Locator {

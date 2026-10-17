@@ -1,4 +1,4 @@
-# 2606 Cofre de Notas (Vite) - servidor local
+# PORTFREE 2606 Cofre de Notas (Vite) - servidor local
 # Duplo-clique OU cole este ficheiro inteiro no PowerShell.
 #
 # Regras:

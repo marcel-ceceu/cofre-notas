@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { open } from "@tauri-apps/plugin-dialog";
 import { useVaultStore } from "../store/vaultStore";
 import { type TauriDirHandle } from "../lib/fileSystem.tauri";
+import { isDesktopShell } from "../lib/runtime/shell";
 import { type ImportProgress } from "../lib/import/runImport";
 import {
   importCursorTranscripts,
@@ -83,6 +84,15 @@ export function ImportCursorModal({ onClose, onImported }: Props) {
     setPhase("scan");
     setError(null);
     (async () => {
+      if (!isDesktopShell()) {
+        setError(
+          "Inventário automático do Cursor só no app instalado (Windows). " +
+            "Instale o Cofre de Notas ou importe conversas do Claude (.zip) pelo painel Importar."
+        );
+        setItems([]);
+        setPhase("select");
+        return;
+      }
       try {
         const { items: raw, errors } = await listCursorTranscripts();
         const recon = await reconcileCursor(raw, outDir, setProgress);

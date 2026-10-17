@@ -2,7 +2,12 @@ import { useEffect, useMemo, useState } from "react";
 import { open } from "@tauri-apps/plugin-dialog";
 import type { Note } from "../lib/fileSystem";
 import { useVaultStore } from "../store/vaultStore";
-import { isTauriRuntime, type TauriDirHandle } from "../lib/fileSystem.tauri";
+import { type TauriDirHandle } from "../lib/fileSystem.tauri";
+import {
+  defaultExportDest,
+  exportDestLabel,
+  isDesktopShell,
+} from "../lib/runtime/shell";
 import {
   runCopyFiles,
   runConsolidate,
@@ -36,8 +41,8 @@ export function ConsolidateModal({ notes, onClose }: Props) {
           .pop() || "cofre"
       : "cofre";
 
-  const [destDir, setDestDir] = useState<string | null>(
-    isTauriRuntime() ? DEFAULT_EXPORT_DEST_ABS : null
+  const [destDir, setDestDir] = useState<string | null>(() =>
+    defaultExportDest(DEFAULT_EXPORT_DEST_ABS)
   );
   const [running, setRunning] = useState<string | null>(null);
   const [progress, setProgress] = useState<ExportProgress | null>(null);
@@ -56,7 +61,6 @@ export function ConsolidateModal({ notes, onClose }: Props) {
   const targetNotes = source === "search" ? notes : resolved.matched;
 
   useEffect(() => {
-    if (!isTauriRuntime()) return;
     let cancelled = false;
     void (async () => {
       const p = await loadAiPrefs();
@@ -76,6 +80,7 @@ export function ConsolidateModal({ notes, onClose }: Props) {
   }, [onClose, running, settingsOpen]);
 
   async function pickDest() {
+    if (!isDesktopShell()) return;
     const sel = await open({ directory: true });
     if (typeof sel === "string") setDestDir(sel);
   }
@@ -106,13 +111,17 @@ export function ConsolidateModal({ notes, onClose }: Props) {
   const doCopy = () =>
     wrap("copy", async () => {
       const r = await runCopyFiles(targetNotes, destDir!, setProgress);
-      return `${r.copied}/${r.total} arquivo(s) copiado(s) para "${r.subfolder}".`;
+      return isDesktopShell()
+        ? `${r.copied}/${r.total} arquivo(s) copiado(s) para "${r.subfolder}".`
+        : `${r.copied}/${r.total} arquivo(s) — download cofre-notas-${r.subfolder}.zip.`;
     });
 
   const doConsolidate = () =>
     wrap("merge", async () => {
       const r = await runConsolidate(targetNotes, destDir!, vaultLabel, setProgress);
-      return `Consolidado gravado: ${r.file} (${r.count} conversas).`;
+      return isDesktopShell()
+        ? `Consolidado gravado: ${r.file} (${r.count} conversas).`
+        : `Consolidado baixado: ${r.file} (${r.count} conversas).`;
     });
 
   const doConsolidateAI = () => {
@@ -183,13 +192,6 @@ export function ConsolidateModal({ notes, onClose }: Props) {
           </button>
         </div>
 
-        {!isTauriRuntime() ? (
-          <div className="p-4">
-            <p className="text-sm text-zinc-600">
-              A exportação só funciona no app desktop (Tauri).
-            </p>
-          </div>
-        ) : (
           <div className="p-4 space-y-4 text-sm">
             <div className="space-y-2">
               <div className="flex items-center justify-between">
@@ -248,18 +250,20 @@ export function ConsolidateModal({ notes, onClose }: Props) {
 
             <div className="space-y-1.5">
               <div className="flex items-center justify-between">
-                <span className="font-medium text-zinc-800">Pasta destino</span>
-                <button
-                  type="button"
-                  onClick={pickDest}
-                  disabled={busy}
-                  className="rounded border border-zinc-300 px-2 py-1 text-xs text-zinc-700 hover:bg-zinc-50 disabled:opacity-40"
-                >
-                  Escolher pasta…
-                </button>
+                <span className="font-medium text-zinc-800">Destino</span>
+                {isDesktopShell() && (
+                  <button
+                    type="button"
+                    onClick={pickDest}
+                    disabled={busy}
+                    className="rounded border border-zinc-300 px-2 py-1 text-xs text-zinc-700 hover:bg-zinc-50 disabled:opacity-40"
+                  >
+                    Escolher pasta…
+                  </button>
+                )}
               </div>
               <p className="rounded border border-zinc-200 bg-zinc-50 p-2 text-xs font-mono text-zinc-600 break-all">
-                {destDir ?? "— selecione uma pasta —"}
+                {exportDestLabel(destDir)}
               </p>
             </div>
 
@@ -330,7 +334,6 @@ export function ConsolidateModal({ notes, onClose }: Props) {
               </p>
             )}
           </div>
-        )}
 
         <div className="flex justify-end border-t border-zinc-200 px-4 py-3">
           <button

@@ -183,6 +183,12 @@ body {
   padding: 0;
   justify-content: center;
 }
+/** Aba de seção ativa na toolbar (Importar, Claude Web…). */
+.tb-btn--section {
+  background: var(--accent-soft);
+  border-color: var(--accent-ring);
+  color: var(--accent-strong);
+}
 
 /* Rail de atividades — coluna de icones a esquerda */
 .rail-btn {
