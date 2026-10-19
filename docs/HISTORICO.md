@@ -8,7 +8,7 @@
 | **Nome do app (UI / instalador)** | Cofre de Notas |
 | **Repositório GitHub** | [marcel-ceceu/cofre-notas](https://github.com/marcel-ceceu/cofre-notas) |
 | **Stack** | Tauri 2 + Vite + React 18 + Tailwind 4 |
-| **Versão atual** | **0.13.0** (tag `v0.13.0`) |
+| **Versão atual** | **0.14.0** (tag `v0.14.0`) |
 | **Auto-update** | GitHub Releases + `latest.json` + `UpdateBanner` |
 
 > O **nome da pasta local** segue a convenção `2606_*` do workspace. O **repo remoto** e o **identificador Tauri** (`com.marcel.cofre-notas`) mantêm-se `cofre-notas` para não quebrar releases nem updates já instalados.
@@ -16,6 +16,12 @@
 ---
 
 ## Entradas de histórico
+
+### 19/10/2026 — v0.14.0: paridade PWA e importação Claude
+
+**Mudança:** o PWA e o app instalado passam a oferecer as mesmas ações. A exportação no navegador baixa o arquivo. A importação do Claude ganha o manifesto e o painel web. Entra o script de transcrição da semana. O AbrirServer segue o modelo PORTFREE.
+
+---
 
 ### 05/10/2026 — v0.13.0: Importar Claude no novo formato de export (`conversations-000.zip`) e leitura em fluxo
 
@@ -103,6 +109,7 @@
 
 | Versão | Data (release) | Destaques |
 |--------|----------------|-----------|
+| **0.14.0** | 19/10/2026 | Paridade PWA e app instalado, importação Claude com manifesto, script de transcrição da semana |
 | **0.13.0** | 05/10/2026 | Importar Claude no export novo (`conversations-000.zip`, partes -001…): leitura em fluxo (export de 711 MB), validação pelo diretório central, aviso de .zip corrompido, cortesias ~5× mais rápida; E2E Playwright |
 | **0.12.0** | 04/10/2026 | Busca dentro da nota: lupa flutuante / Ctrl+F, sem maiúsculas/acentos, contador N de M, Enter/Shift+Enter, ocorrência atual em âmbar |
 | **0.11.1** | 19/09/2026 | Hotfix: janela invisível ao abrir (ACL sem `window:allow-show` + fallback de `show()` no Rust) |

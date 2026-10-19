@@ -7,7 +7,7 @@
 ===============================================================================
  Uso:
    powershell -NoProfile -ExecutionPolicy Bypass -File ".\reinstalar.ps1"
-   powershell -NoProfile -ExecutionPolicy Bypass -File ".\reinstalar.ps1" -Version 0.13.0
+   powershell -NoProfile -ExecutionPolicy Bypass -File ".\reinstalar.ps1" -Version 0.14.0
    powershell -NoProfile -ExecutionPolicy Bypass -File ".\reinstalar.ps1" -SomenteDiagnostico
 
  Sem -Version usa a release "latest". Se a CI ainda estiver buildando a tag,
