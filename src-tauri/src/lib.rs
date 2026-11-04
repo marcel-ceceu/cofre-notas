@@ -4,15 +4,24 @@ mod vault;
 
 use tauri::Manager;
 
-/// A janela nasce oculta (tauri.conf.json: visible=false) e o front a mostra
-/// após o primeiro paint. Se o JS não conseguir (ACL sem `window:allow-show`,
-/// erro no bundle...), este fallback garante que ela apareça — na 0.11.0 o app
-/// abria invisível por isso.
+/// A janela nasce VISÍVEL (tauri.conf.json: visible=true, com backgroundColor
+/// igual ao fundo do app para não piscar). Em 04/11/2026, com a janela oculta,
+/// o WebView2 passou a recusar o `AddScriptToExecuteOnDocumentCreated` com
+/// 0x80070578 ("identificador da janela inválido") e o app ficava sem janela.
+/// Este fallback continua como seguro caso a janela fique oculta por outro motivo.
 const SHOW_FALLBACK_MS: u64 = 2500;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
   let mut builder = tauri::Builder::default()
+    // Log registrado ANTES de qualquer janela: a criação da janela do
+    // tauri.conf.json acontece antes do `.setup()`, e um erro ali só vai para o
+    // `log` — sem logger ativo ele some e o app fica rodando sem janela.
+    .plugin(
+      tauri_plugin_log::Builder::default()
+        .level(log::LevelFilter::Info)
+        .build(),
+    )
     .plugin(tauri_plugin_dialog::init())
     .plugin(tauri_plugin_fs::init())
     .plugin(tauri_plugin_process::init())
@@ -34,13 +43,6 @@ pub fn run() {
       chatgpt::abrir_chatgpt
     ])
     .setup(|app| {
-      if cfg!(debug_assertions) {
-        app.handle().plugin(
-          tauri_plugin_log::Builder::default()
-            .level(log::LevelFilter::Info)
-            .build(),
-        )?;
-      }
       if let Some(win) = app.get_webview_window("main") {
         std::thread::spawn(move || {
           std::thread::sleep(std::time::Duration::from_millis(SHOW_FALLBACK_MS));

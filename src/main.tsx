@@ -22,9 +22,8 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
   </React.StrictMode>
 );
 
-// A janela nasce oculta (tauri.conf.json: visible=false) para não piscar
-// branca durante o parse do bundle; mostra após o primeiro paint, com um
-// timeout de segurança para nunca deixar a janela invisível.
+// A janela já nasce visível (tauri.conf.json: visible=true — oculta, o WebView2
+// falhava ao criar). O show() abaixo fica como seguro, sem efeito no caso normal.
 if (typeof window !== "undefined" && "__TAURI_INTERNALS__" in window) {
   const show = () => {
     import("@tauri-apps/api/window")

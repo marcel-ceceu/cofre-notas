@@ -8,7 +8,7 @@
 | **Nome do app (UI / instalador)** | Cofre de Notas |
 | **Repositório GitHub** | [marcel-ceceu/cofre-notas](https://github.com/marcel-ceceu/cofre-notas) |
 | **Stack** | Tauri 2 + Vite + React 18 + Tailwind 4 |
-| **Versão atual** | **0.14.0** (tag `v0.14.0`) |
+| **Versão atual** | **0.14.1** (tag `v0.14.1`) |
 | **Auto-update** | GitHub Releases + `latest.json` + `UpdateBanner` |
 
 > O **nome da pasta local** segue a convenção `2606_*` do workspace. O **repo remoto** e o **identificador Tauri** (`com.marcel.cofre-notas`) mantêm-se `cofre-notas` para não quebrar releases nem updates já instalados.
@@ -16,6 +16,16 @@
 ---
 
 ## Entradas de histórico
+
+### 04/11/2026 — v0.14.1: app voltou a abrir (janela não nasce mais oculta)
+
+**Problema:** ao clicar no atalho, o app não abria. O processo subia e ficava rodando sem janela, sem erro visível. Falhava também a 0.13 e com o perfil do WebView2 limpo. O outro app Tauri da máquina, que tem as mesmas versões de tauri/wry, abria normalmente.
+
+**Causa:** com a janela criada oculta (`visible: false`), o WebView2 156 recusava o primeiro `AddScriptToExecuteOnDocumentCreated` com `0x80070578` ("identificador da janela inválido"). O wry devolve o erro e o Tauri só registra `failed to create webview` no `log`. Na release não havia logger ativo nesse momento, porque o plugin de log só entrava no `.setup()`, depois da criação da janela. Então o erro sumia e o processo ficava vivo sem janela. O ponto exato foi achado com uma cópia instrumentada do wry.
+
+**Mudança:** `tauri.conf.json`: a janela nasce visível, com `backgroundColor` `#f7f6fb` (fundo do app) para não piscar. `lib.rs`: `tauri_plugin_log` é registrado no builder, antes de qualquer janela, também na release. Falhas de criação de janela agora ficam em `%LOCALAPPDATA%\com.marcel.cofre-notas\logs\Cofre de Notas.log`. O `show()` do front e o fallback de 2,5 s ficam como seguro.
+
+---
 
 ### 19/10/2026 — v0.14.0: paridade PWA e importação Claude
 
@@ -109,6 +119,7 @@
 
 | Versão | Data (release) | Destaques |
 |--------|----------------|-----------|
+| **0.14.1** | 04/11/2026 | Correção: o app voltou a abrir (a janela oculta fazia o WebView2 falhar com 0x80070578); log ativo desde o início, também na release |
 | **0.14.0** | 19/10/2026 | Paridade PWA e app instalado, importação Claude com manifesto, script de transcrição da semana |
 | **0.13.0** | 05/10/2026 | Importar Claude no export novo (`conversations-000.zip`, partes -001…): leitura em fluxo (export de 711 MB), validação pelo diretório central, aviso de .zip corrompido, cortesias ~5× mais rápida; E2E Playwright |
 | **0.12.0** | 04/10/2026 | Busca dentro da nota: lupa flutuante / Ctrl+F, sem maiúsculas/acentos, contador N de M, Enter/Shift+Enter, ocorrência atual em âmbar |
