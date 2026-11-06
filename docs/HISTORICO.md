@@ -8,7 +8,7 @@
 | **Nome do app (UI / instalador)** | Cofre de Notas |
 | **Repositório GitHub** | [marcel-ceceu/cofre-notas](https://github.com/marcel-ceceu/cofre-notas) |
 | **Stack** | Tauri 2 + Vite + React 18 + Tailwind 4 |
-| **Versão atual** | **0.14.1** (tag `v0.14.1`) |
+| **Versão atual** | **0.15.0** (tag `v0.15.0`) |
 | **Auto-update** | GitHub Releases + `latest.json` + `UpdateBanner` |
 
 > O **nome da pasta local** segue a convenção `2606_*` do workspace. O **repo remoto** e o **identificador Tauri** (`com.marcel.cofre-notas`) mantêm-se `cofre-notas` para não quebrar releases nem updates já instalados.
@@ -17,7 +17,13 @@
 
 ## Entradas de histórico
 
-### 05/11/2026 — (sem release) pasta fixa das conversas originais
+### 06/11/2026 — v0.15.0: conversas do ChatGPT no cofre
+
+Release da entrada abaixo: o botão **Importar → Levar conversas do ChatGPT para o cofre** passa a existir no app instalado. Motivo: a busca por "azulzinha" não achava a conversa "Identificar cobrança Fiserv". Ela estava baixada em `1_Chatgpt` (326 arquivos), mas o cofre tinha 0 notas do ChatGPT, porque a v0.14.1 não tinha esse passo.
+
+---
+
+### 05/11/2026 — pasta fixa das conversas originais (saiu na v0.15.0)
 
 **Contexto:** baixar as conversas do ChatGPT e passar pelo mesmo processo do Claude (baixar → conferir duplicatas → limpeza). O exportador do ChatGPT pedia uma pasta a cada exportação (ou caía em Downloads), e o ZIP do Claude só era procurado em Downloads.
 
