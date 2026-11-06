@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-listar-conversas-chatgpt"
+description = "Enables the listar_conversas_chatgpt command without any pre-configured scope."
+commands.allow = ["listar_conversas_chatgpt"]
+
+[[permission]]
+identifier = "deny-listar-conversas-chatgpt"
+description = "Denies the listar_conversas_chatgpt command without any pre-configured scope."
+commands.deny = ["listar_conversas_chatgpt"]

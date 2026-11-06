@@ -17,6 +17,46 @@
 
 ## Entradas de histórico
 
+### 05/11/2026 — (sem release) pasta fixa das conversas originais
+
+**Contexto:** baixar as conversas do ChatGPT e passar pelo mesmo processo do Claude (baixar → conferir duplicatas → limpeza). O exportador do ChatGPT pedia uma pasta a cada exportação (ou caía em Downloads), e o ZIP do Claude só era procurado em Downloads.
+
+**Mudança:** raiz fixa `D:\915_CofreNotas-Conversas` com `1_Chatgpt`, `2_ClaudeWeb`, `3_Cursor` (`dest.ts`: `CONVERSAS_ROOT`, `conversasDir()`). Comando Rust `salvar_conversa_chatgpt` grava o `.md` em `1_Chatgpt` e só aceita nome `.md` simples. O exportador (1.0.2-tauri) usa esse comando quando roda dentro do Cofre. `build.rs` passou a ter manifesto de comandos do app: `default.json` libera os 3 comandos da janela principal, e `capabilities/chatgpt.json` libera só `salvar_conversa_chatgpt` para a janela `chatgpt` em `https://chatgpt.com/*`. `findLatestExportZips` procura primeiro em `2_ClaudeWeb` e depois em Downloads. Padrão e fluxo em `docs/PASTAS-CONVERSAS.md`.
+
+**Exportador 1.1.0:** o período deixa de ser só 7/30 dias e passa a ter campos De/Até, com atalhos 7/30/90 dias, último ano e Tudo. O mesmo arquivo cola no Console do Chrome; avisa se já estiver carregado. Validado com simulação em Node (DOM e API do chatgpt.com falsos): filtro De/Até, atalhos, período inválido, Diagnosticar sem salvar, nomes dos arquivos. Ainda não rodou no chatgpt.com real.
+
+**Exportador 1.2.0:** o painel vira um popup centralizado que abre assim que o script roda (✕ fecha, ⬇ GPT reabre). Diagnosticar deixa de converter uma amostra de 3 e passa a listar a quantidade, o tempo estimado e o nome/data de cada conversa do período, sem abrir nenhuma. Caracteres invisíveis das regras de citação viraram escapes `\u` (mesmo comportamento), para o script poder ser copiado de qualquer lugar sem quebrar.
+
+**Exportador 1.3.0 (padrão do Cofre, duplicatas, conferência):** o `.md` sai no padrão do Cofre — `title/origem: CHATGPT/uuid/created/updated` e turnos `## 👤 You *(hora)*` / `## 🤖 ChatGPT *(hora)*`, iguais aos do Claude. `cortesias.ts` passa a reconhecer `ChatGPT` no cabeçalho de turno e `detectOrigem` devolve `CHATGPT`. Antes de exportar, o script lê o cabeçalho dos arquivos da pasta: idêntica (mesmo uuid e updated, já no padrão) é ignorada com aviso; alterada (ou ainda no formato antigo) é regravada no mesmo arquivo; nova ganha `AAAA-MM-DD-titulo-id8.md` com a data de criação. Diagnosticar mostra o aviso e a lista. Depois de exportar, uma conferência mostra aprovadas e reprovadas, com o motivo. No Chrome a pasta escolhida fica guardada (IndexedDB) e "Alterar pasta" troca; no Cofre, o comando novo `listar_conversas_chatgpt` (liberado só para a janela `chatgpt`) dá a lista para as duplicatas. Validação: `chatgptExport.test.ts` (11 casos: roda o script real e passa a saída por `headerStatus`, `detectOrigem` e `removeCortesias`), 109/109 no vitest, `tsc -b`, `cargo test` (6 casos) e simulação do fluxo do Chrome em Node (pasta e API falsas). Ainda não rodou no chatgpt.com real.
+
+**ChatGPT no cofre (passos 2 e 3 no app):** painel **Importar** → **Levar conversas do ChatGPT para o cofre** (`ImportChatgptModal`). Lê os `.md` de `1_Chatgpt` sem alterar nenhum, confere e grava em `ChatGPT\` dentro do cofre (`CHATGPT_SUBDIR`). A conferência (`chatgptImport.ts`, funções puras) aceita o padrão do Cofre e converte o formato antigo do exportador (1.0–1.2: `id/titulo/alterado` + `### Você —`) para exatamente o que o 1.3.0 grava, para não ser preciso exportar tudo de novo. Também mostra:
+- **duplicata** na pasta: mesma conversa em dois arquivos, fica o `updated` mais novo;
+- **nova / alterada / já no cofre**: uuid + `updated`, mesma regra do Claude e do Cursor;
+- **fora do padrão**, com o motivo;
+- **vazia**;
+- **aviso** quando não há resposta do ChatGPT.
+
+A gravação (`runChatgptImport.ts`) tira as cortesias e mantém um arquivo por conversa, com nome `{data de criação}-{título}.md` como no Claude. O botão "Baixar pela janela do app" abre o exportador interno. `joinWin` foi para `dest.ts`.
+
+Validação:
+- **vitest:** `chatgptImport.test.ts` tem 8 casos. Um deles mostra que o formato antigo convertido é idêntico à saída do exportador real. Ficou 117/117 no total, e o `tsc -b` passou limpo.
+- **Dados reais (293–295 arquivos, todos no formato 1.2.0):**
+  - os 293 viraram o padrão, com os 3.481 turnos mantidos e nomes únicos;
+  - a limpeza tirou 11 turnos que eram só cortesia, e 10 conversas ficaram com o aviso "sem resposta";
+  - o fluxo completo com o I/O simulado em Node gravou 295;
+  - na 2ª rodada, as 295 deram "já no cofre" e nada foi gravado;
+  - a conversa alterada foi regravada no mesmo arquivo, e os originais não mudaram.
+- **Não validado:** a tela no app.
+
+**E2E do Claude Web realinhado:** os 11 casos de `e2e/import-claude.spec.ts` falhavam desde o modal de 4 passos (v0.14.0), não por esta mudança. Três pontos tinham mudado:
+- O `conversations-000.zip` saiu da introdução. O caso (g) agora confere o passo 2 (`conversations-*.zip`) e o passo 3 (`conversations-000.zip`).
+- O botão "Importar" ganhou "↵" no nome. O teste agora procura pelo começo do nome, `/^Importar/`.
+- "conversão concluída" aparecia duas vezes. O teste agora espera "conversão concluída com sucesso".
+
+**Falta:** exportar respostas que vêm por ferramenta (imagem gerada, pesquisa aprofundada).
+
+---
+
 ### 04/11/2026 — v0.14.1: app voltou a abrir (janela não nasce mais oculta)
 
 **Problema:** ao clicar no atalho, o app não abria. O processo subia e ficava rodando sem janela, sem erro visível. Falhava também a 0.13 e com o perfil do WebView2 limpo. O outro app Tauri da máquina, que tem as mesmas versões de tauri/wry, abria normalmente.

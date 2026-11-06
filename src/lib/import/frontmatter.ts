@@ -88,6 +88,8 @@ export function headerStatus(raw: string): HeaderStatus {
  * Detecta a origem pelo formato do arquivo.
  * CURSOR: turnos "## 🤖 Cursor" (gerados por cursorImport.ts) — testado
  * primeiro porque também usa "## 👤 You".
+ * CHATGPT: turnos "## 🤖 ChatGPT" (exportador src-tauri/chatgpt_export.js) —
+ * também antes do CLAUDEWEB pelo mesmo motivo.
  * CLAUDEWEB: frontmatter estilo export + turnos "## 👤 You" / "## 🤖 Claude".
  * As demais retornam null até termos um exemplo real de cada uma.
  */
@@ -95,6 +97,7 @@ export function detectOrigem(raw: string): Origem | null {
   const fm = parseFrontmatter(raw);
   if (!fm) return null;
   if (/^##\s+🤖 Cursor\b/m.test(raw)) return "CURSOR";
+  if (/^##\s+🤖 ChatGPT\b/m.test(raw)) return "CHATGPT";
   if (/^##\s+(?:👤 You|🤖 Claude)\b/m.test(raw)) return "CLAUDEWEB";
   return null;
 }

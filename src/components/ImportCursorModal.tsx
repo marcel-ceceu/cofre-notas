@@ -12,7 +12,7 @@ import {
   type CursorItem,
   type CursorStatus,
 } from "../lib/import/runCursorImport";
-import { CURSOR_SUBDIR, DEFAULT_IMPORT_OUT_DIR } from "../lib/import/dest";
+import { CURSOR_SUBDIR, DEFAULT_IMPORT_OUT_DIR, joinWin } from "../lib/import/dest";
 
 type Props = {
   onClose: () => void;
@@ -35,11 +35,6 @@ const STATUS_CLASS: Record<CursorStatus, string> = {
   unchanged: "bg-zinc-100 text-zinc-500",
   empty: "bg-zinc-100 text-zinc-400",
 };
-
-function joinWin(dir: string, name: string): string {
-  const sep = dir.includes("\\") ? "\\" : "/";
-  return dir.endsWith(sep) ? `${dir}${name}` : `${dir}${sep}${name}`;
-}
 
 function fmtDate(ms: number): string {
   const d = new Date(ms);

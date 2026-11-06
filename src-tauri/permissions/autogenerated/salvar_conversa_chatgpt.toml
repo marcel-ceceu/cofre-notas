@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-salvar-conversa-chatgpt"
+description = "Enables the salvar_conversa_chatgpt command without any pre-configured scope."
+commands.allow = ["salvar_conversa_chatgpt"]
+
+[[permission]]
+identifier = "deny-salvar-conversa-chatgpt"
+description = "Denies the salvar_conversa_chatgpt command without any pre-configured scope."
+commands.deny = ["salvar_conversa_chatgpt"]

@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-scan-cursor-transcripts"
+description = "Enables the scan_cursor_transcripts command without any pre-configured scope."
+commands.allow = ["scan_cursor_transcripts"]
+
+[[permission]]
+identifier = "deny-scan-cursor-transcripts"
+description = "Denies the scan_cursor_transcripts command without any pre-configured scope."
+commands.deny = ["scan_cursor_transcripts"]

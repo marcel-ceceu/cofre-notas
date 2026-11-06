@@ -45,7 +45,10 @@ const TOOLBAR_CLAUDE_WEB_TITLE =
 const RUN_PIPELINE = "Iniciar processo de importação Claude Web";
 const DIALOG_TITLE = "Importação Claude Web";
 const REJECTED_PREFIX = "Ignorado(s) por não parecer(em) um export do Claude:";
-const DONE = /conversão concluída/;
+/** Linha do resultado (passo 4); "conversão concluída" sozinho aparece também no rodapé. */
+const DONE = /conversão concluída com sucesso/;
+/** Botões de avanço do modal levam o atalho "↵" no nome acessível. */
+const RUN_IMPORT = /^Importar/;
 const FINISH = "Recarregar cofre";
 const ZIP_INPUT = 'input[type="file"][accept*="zip"]';
 /** Banco/store do cofre web (src/lib/import/webVault.ts). */
@@ -90,7 +93,7 @@ async function expectAccepted(dialog: Locator, fileName: string, timeout?: numbe
 }
 
 async function runImport(dialog: Locator, timeout?: number): Promise<void> {
-  await dialog.getByRole("button", { name: "Importar", exact: true }).click();
+  await dialog.getByRole("button", { name: RUN_IMPORT }).click();
   await expect(dialog.getByText(DONE)).toBeVisible({ timeout });
 }
 
@@ -227,9 +230,12 @@ test.afterEach(async ({ page }, testInfo) => {
   }
 });
 
-test("(g) a introdução orienta a baixar o conversations-000.zip", async ({ page }) => {
+test("(g) os passos orientam a baixar e escolher o conversations-000.zip", async ({ page }) => {
   const dialog = await openImportDialog(page);
-  await expect(dialog).toContainText("conversations-000.zip");
+  await dialog.getByRole("button", { name: "Próximo →" }).click();
+  await expect(dialog, "passo 2: baixar pelos links do manifest").toContainText("conversations-*.zip");
+  await dialog.getByRole("button", { name: "Já baixei o .zip → conversão" }).click();
+  await expect(dialog, "passo 3: escolher o zip baixado").toContainText("conversations-000.zip");
 });
 
 test("(a) export novo: conversations-000.zip importa só o texto, sem memória/thinking/ferramentas", async ({

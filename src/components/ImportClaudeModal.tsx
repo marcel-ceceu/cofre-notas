@@ -70,7 +70,7 @@ export function ImportClaudeModal({ onClose, onImported }: Props) {
   const tauri = isTauriRuntime();
   const hasZips = tauri ? zipPaths.length > 0 : zipFiles.length > 0;
 
-  // Auto-detecta o export mais recente em Downloads ao entrar na etapa de conversão.
+  // Auto-detecta o export mais recente (D:\915_CofreNotas-Conversas\2_ClaudeWeb, senão Downloads).
   useEffect(() => {
     if (step !== "convert" || !isTauriRuntime()) return;
     let cancelled = false;

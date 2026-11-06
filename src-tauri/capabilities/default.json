@@ -12,6 +12,9 @@
     "updater:default",
     "process:allow-restart",
     "store:default",
+    "allow-read-vault",
+    "allow-scan-cursor-transcripts",
+    "allow-abrir-chatgpt",
     {
       "identifier": "opener:allow-open-url",
       "allow": [

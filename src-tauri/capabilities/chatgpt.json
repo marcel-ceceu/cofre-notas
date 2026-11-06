@@ -1,0 +1,10 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "chatgpt-export",
+  "description": "Janela interna do chatgpt.com: só pode listar e gravar conversas exportadas em D:\\915_CofreNotas-Conversas\\1_Chatgpt",
+  "windows": ["chatgpt"],
+  "remote": {
+    "urls": ["https://chatgpt.com/*"]
+  },
+  "permissions": ["allow-salvar-conversa-chatgpt", "allow-listar-conversas-chatgpt"]
+}

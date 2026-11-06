@@ -113,6 +113,22 @@ o contexto que o Cursor injeta são descartados. O título vem da primeira
 pergunta. O inventário é feito por um comando Rust (`scan_cursor_transcripts`)
 em um único round-trip.
 
+## Pastas das conversas originais
+
+As transcrições originais de cada fonte ficam em um local fixo, uma subpasta por
+fonte, antes de conferir duplicatas e limpar:
+
+```
+D:\915_CofreNotas-Conversas\
+  1_Chatgpt\     o exportador do ChatGPT (Chrome ou janela interna do Cofre) grava aqui;
+                 Importar → "Levar conversas do ChatGPT para o cofre" confere e grava em ChatGPT\ do cofre
+  2_ClaudeWeb\   salve aqui os .zip do export do Claude.ai (o import procura aqui primeiro)
+  3_Cursor\      reservado
+```
+
+Padrão, fluxo (baixar → conferir duplicatas → limpeza) e o que falta:
+[docs/PASTAS-CONVERSAS.md](docs/PASTAS-CONVERSAS.md).
+
 ## Estrutura
 
 ```

@@ -27,6 +27,7 @@ import {
 import { isExportZipName, pickLatestExport } from "./exportFiles";
 import { removeCortesias, prepareCortesias } from "./cortesias";
 import { DEFAULT_CORTESIAS } from "./cortesias.rules";
+import { conversasDir } from "./dest";
 
 export type ImportProgress = { phase: string; done: number; total: number };
 export type ImportResult = {
@@ -156,17 +157,23 @@ export async function writeImportedNoteBatch(
 }
 
 /**
- * Acha o export mais recente em Downloads e devolve todas as partes dele:
+ * Acha o export mais recente e devolve todas as partes dele:
  * formato novo `conversations-000.zip` (+ -001…) ou antigo `data-…-batch-NNNN.zip`.
+ * Procura primeiro na pasta fixa de originais (D:\915_CofreNotas-Conversas\2_ClaudeWeb);
+ * se lá não houver export, cai para Downloads.
  * A escolha em si é pura (exportFiles.ts); aqui só a listagem da pasta.
  */
 export async function findLatestExportZips(): Promise<string[]> {
-  let dir: string;
+  const fixa = await findLatestExportZipsIn(conversasDir("claudeWeb"));
+  if (fixa.length > 0) return fixa;
   try {
-    dir = await downloadDir();
+    return await findLatestExportZipsIn(await downloadDir());
   } catch {
     return [];
   }
+}
+
+async function findLatestExportZipsIn(dir: string): Promise<string[]> {
   let entries: Awaited<ReturnType<typeof readDir>>;
   try {
     entries = await readDir(dir);

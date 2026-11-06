@@ -40,7 +40,9 @@ pub fn run() {
     .invoke_handler(tauri::generate_handler![
       vault::read_vault,
       cursor::scan_cursor_transcripts,
-      chatgpt::abrir_chatgpt
+      chatgpt::abrir_chatgpt,
+      chatgpt::salvar_conversa_chatgpt,
+      chatgpt::listar_conversas_chatgpt
     ])
     .setup(|app| {
       if let Some(win) = app.get_webview_window("main") {
