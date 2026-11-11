@@ -159,7 +159,7 @@ export async function writeImportedNoteBatch(
 /**
  * Acha o export mais recente e devolve todas as partes dele:
  * formato novo `conversations-000.zip` (+ -001…) ou antigo `data-…-batch-NNNN.zip`.
- * Procura primeiro na pasta fixa de originais (D:\915_CofreNotas-Conversas\2_ClaudeWeb);
+ * Procura primeiro na pasta fixa de originais (C:\CofreNotasMsgm\Originais\2_ClaudeWeb);
  * se lá não houver export, cai para Downloads.
  * A escolha em si é pura (exportFiles.ts); aqui só a listagem da pasta.
  */

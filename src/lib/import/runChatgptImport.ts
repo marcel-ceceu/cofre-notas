@@ -1,6 +1,6 @@
 ﻿/**
  * Importar ChatGPT — orquestrador de I/O (Tauri, desktop apenas).
- * Lê os originais de D:\915_CofreNotas-Conversas\1_Chatgpt (nunca os altera),
+ * Lê os originais de C:\CofreNotasMsgm\Originais\1_Chatgpt (nunca os altera),
  * planeja com chatgptImport.ts e grava no cofre sem cortesias.
  */
 import { join } from "@tauri-apps/api/path";

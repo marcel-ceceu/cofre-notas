@@ -7,7 +7,7 @@
 ## Estrutura
 
 ```
-D:\915_CofreNotas-Conversas\
+C:\CofreNotasMsgm\Originais\
   1_Chatgpt\     conversas do ChatGPT, uma por arquivo .md (exportador do Cofre)
   2_ClaudeWeb\   exports do Claude.ai (conversations-000.zip, -001… ou data-…-batch-NNNN.zip)
   3_Cursor\      reservado para os transcripts originais do Cursor (ainda não usado pelo app)
@@ -27,7 +27,7 @@ Regras:
 
 | Passo | O que acontece | Onde grava | Situação |
 |---|---|---|---|
-| 1. Baixar | Cada fonte entrega as conversas originais | `D:\915_CofreNotas-Conversas\<n>_<Fonte>\` | ChatGPT e Claude Web prontos |
+| 1. Baixar | Cada fonte entrega as conversas originais | `C:\CofreNotasMsgm\Originais\<n>_<Fonte>\` | ChatGPT e Claude Web prontos |
 | 2. Conferir duplicatas | Mesma conversa baixada mais de uma vez fica uma só (pelo id da conversa) | pasta de originais (no download) e cofre (no import) | ChatGPT e Claude Web prontos |
 | 3. Limpeza | Tira cortesias ("oi", "obrigado"…) e lixo de exportação | cofre | ChatGPT e Claude Web prontos |
 
@@ -37,17 +37,18 @@ O exportador é um script só ([`chatgpt_export.js`](../src-tauri/chatgpt_export
 injetado na janela interna do Cofre, ou colado no Console do Chrome. Ao rodar, abre um **popup
 centralizado**; **✕** fecha e o botão **⬇ GPT** (canto inferior direito) reabre.
 
-**No Chrome:**
+**No Chrome (método oficial):**
 
-1. Copiar o script para a área de transferência (no PowerShell, na pasta do projeto):
+1. Copiar o script: no Cofre, painel **Importar** → **Copiar script do exportador**.
+   Sem o app, no PowerShell na pasta do projeto:
    `Get-Content -Raw -Encoding UTF8 "src-tauri\chatgpt_export.js" | Set-Clipboard`
 2. Abrir o chatgpt.com logado, **F12** → aba **Console**, Ctrl+V e Enter
    (na 1ª vez o Chrome pede para digitar `allow pasting`).
 3. Vale até recarregar a página; depois de F5, colar de novo.
 
-**Destino:** o popup mostra `Destino: D:\915_CofreNotas-Conversas\1_Chatgpt`. No Chrome, por segurança,
+**Destino:** o popup mostra `Destino: C:\CofreNotasMsgm\Originais\1_Chatgpt`. No Chrome, por segurança,
 o navegador só grava numa pasta escolhida por você: **na 1ª vez** que clicar em Diagnosticar ou Exportar
-ele abre o seletor — escolha `D:\915_CofreNotas-Conversas\1_Chatgpt`. A escolha fica guardada e é
+ele abre o seletor — escolha `C:\CofreNotasMsgm\Originais\1_Chatgpt`. A escolha fica guardada e é
 reusada nas próximas (o Chrome pode pedir só para confirmar a permissão). **Alterar pasta** troca o
 destino; o popup mostra `pasta "<nome>" (escolhida por você)` quando não é a padrão. No Cofre o destino
 é sempre a pasta padrão.
@@ -139,13 +140,13 @@ em [`build.rs`](../src-tauri/build.rs).
 ### Claude Web (`2_ClaudeWeb`)
 
 1. Pedir o export em claude.ai (Configurações → Privacidade → Exportar dados); o link chega por e-mail.
-2. Baixar os `.zip` e **salvar em `D:\915_CofreNotas-Conversas\2_ClaudeWeb\`** (pode deixar os de
+2. Baixar os `.zip` e **salvar em `C:\CofreNotasMsgm\Originais\2_ClaudeWeb\`** (pode deixar os de
    meses anteriores lá; o app pega o mais recente).
 3. No Cofre, **Importar Claude** → etapa de conversão. O app procura o export mais recente primeiro em
    `2_ClaudeWeb`; se não achar nenhum lá, procura em Downloads (como antes). Dá para escolher os `.zip`
    na mão também.
 4. A importação já faz os passos 2 e 3: dedupe por `uuid` (fica o `updated` mais novo) e remoção de
-   cortesias, gravando no cofre (`D:\2606VAULT-ClaudeConversasOF-v2` por padrão).
+   cortesias, gravando no cofre (`C:\CofreNotasMsgm\Cofre` por padrão).
 
 ### Cursor (`3_Cursor`)
 

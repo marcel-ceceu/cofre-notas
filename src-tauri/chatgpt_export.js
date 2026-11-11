@@ -1,6 +1,6 @@
 // GPTEXPORT 1.3.0 — exportador de conversas do ChatGPT para .md no padrão do Cofre de Notas.
 // Um script só, dois usos (ver docs/PASTAS-CONVERSAS.md):
-//  - Cofre de Notas: injetado na janela "chatgpt"; grava em D:\915_CofreNotas-Conversas\1_Chatgpt.
+//  - Cofre de Notas: injetado na janela "chatgpt"; grava em C:\CofreNotasMsgm\Originais\1_Chatgpt.
 //  - Chrome: colar no Console (F12) do chatgpt.com; na 1ª vez pede a pasta e depois lembra.
 // Antes de exportar confere a pasta: conversa idêntica é ignorada, alterada substitui o arquivo antigo.
 // Depois de exportar confere cada .md contra o padrão do Cofre (cabeçalho + turnos).
@@ -276,7 +276,7 @@
   // Cofre: grava direto na pasta padrão (comandos Rust salvar_/listar_conversas_chatgpt).
   // Chrome: o navegador só grava numa pasta que você escolheu uma vez; a escolha fica guardada
   // (IndexedDB do chatgpt.com) e é reusada. "Alterar pasta" troca. Sem esse recurso: Downloads.
-  const PASTA_PADRAO = 'D:\\915_CofreNotas-Conversas\\1_Chatgpt';
+  const PASTA_PADRAO = 'C:\\CofreNotasMsgm\\Originais\\1_Chatgpt';
   const NOME_PADRAO = '1_Chatgpt';
   const invokeCofre = () => window.__TAURI_INTERNALS__?.invoke;
 

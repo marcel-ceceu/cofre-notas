@@ -8,7 +8,7 @@
 | **Nome do app (UI / instalador)** | Cofre de Notas |
 | **Repositório GitHub** | [marcel-ceceu/cofre-notas](https://github.com/marcel-ceceu/cofre-notas) |
 | **Stack** | Tauri 2 + Vite + React 18 + Tailwind 4 |
-| **Versão atual** | **0.15.0** (tag `v0.15.0`) |
+| **Versão atual** | **0.16.0** (tag `v0.16.0`) |
 | **Auto-update** | GitHub Releases + `latest.json` + `UpdateBanner` |
 
 > O **nome da pasta local** segue a convenção `2606_*` do workspace. O **repo remoto** e o **identificador Tauri** (`com.marcel.cofre-notas`) mantêm-se `cofre-notas` para não quebrar releases nem updates já instalados.
@@ -16,6 +16,26 @@
 ---
 
 ## Entradas de histórico
+
+### 11/11/2026 — v0.16.0: base do cofre sai do D e vai para `C:\CofreNotasMsgm`
+
+**Mudança:** as duas pastas fixas foram para o disco C, lado a lado: o cofre (`D:\2606VAULT-ClaudeConversasOF-v2` → `C:\CofreNotasMsgm\Cofre`) e os originais (`D:\915_CofreNotas-Conversas` → `C:\CofreNotasMsgm\Originais`, mesmas subpastas `1_Chatgpt`, `2_ClaudeWeb`, `3_Cursor`). Trocado em `dest.ts`, `chatgpt.rs`, `chatgpt_export.js`, `capabilities/chatgpt.json`, comentários, README e `PASTAS-CONVERSAS.md`. Os dados foram copiados com robocopy (5.213 + 326 arquivos, zero falhas); o D ficou intacto como cópia de segurança.
+
+**Cofre lembrado:** quem abria o cofre no D passa a abrir o mesmo cofre no C sozinho — `loadLastVaultHandle` passa o caminho salvo por `migrarCaminhoAntigo` (`dest.ts`, testado em `dest.test.ts`). Assim o disco D pode sair.
+
+**Atenção:** no Chrome, o exportador lembra a pasta escolhida da última vez — clique em **Alterar pasta** e escolha `C:\CofreNotasMsgm\Originais\1_Chatgpt`.
+
+---
+
+### 06/11/2026 — botão "Copiar script do exportador" (saiu na v0.16.0)
+
+**Contexto:** colar o script no Console do Chrome passa a ser o método oficial de baixar as conversas do ChatGPT. Antes, para copiar o script era preciso um comando no PowerShell.
+
+**Mudança:** o painel **Importar** ganhou o botão **Copiar script do exportador**. Ele copia o mesmo `src-tauri/chatgpt_export.js` que o Cofre injeta na janela interna. O arquivo é carregado só no clique (`scriptExportador.ts`, `?raw`), num pedaço separado de 32 kB. O passo "Baixar" do painel agora explica o caminho no Chrome: F12 → Console → Ctrl+V → Enter, `allow pasting` na 1ª vez e a pasta `1_Chatgpt`.
+
+**Validação:** `scriptExportador.test.ts` confere que o texto é igual ao arquivo (118/118 no vitest). `e2e/copiar-script-chatgpt.spec.ts` clica no botão no navegador headless e lê a área de transferência: o conteúdo é o exportador inteiro (com CRLF virando LF). `tsc -b` e `npm run build` passaram limpos.
+
+---
 
 ### 06/11/2026 — v0.15.0: conversas do ChatGPT no cofre
 

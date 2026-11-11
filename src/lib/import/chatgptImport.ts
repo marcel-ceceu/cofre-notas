@@ -1,7 +1,7 @@
 ﻿/**
  * Importar ChatGPT — passos 2 e 3 depois do download (funções PURAS, sem I/O).
  * Entrada: os .md que o exportador (src-tauri/chatgpt_export.js) gravou em
- * D:\915_CofreNotas-Conversas\1_Chatgpt. Saída: o plano do que vai para o cofre.
+ * C:\CofreNotasMsgm\Originais\1_Chatgpt. Saída: o plano do que vai para o cofre.
  *
  * - Aceita o padrão do Cofre (exportador 1.3.0+) e converte o formato antigo
  *   (1.0–1.2: `id:`/`titulo:`/`alterado:` + `### Você — …`), para não ser

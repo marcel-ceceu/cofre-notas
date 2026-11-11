@@ -6,7 +6,7 @@
  */
 
 /** Pasta de saída padrão oficial do fluxo Claude (raiz do cofre). */
-export const DEFAULT_IMPORT_OUT_DIR = "D:\\2606VAULT-ClaudeConversasOF-v2";
+export const DEFAULT_IMPORT_OUT_DIR = "C:\\CofreNotasMsgm\\Cofre";
 
 /** Subpasta do cofre onde ficam as conversas do Cursor. */
 export const CURSOR_SUBDIR = "Cursor";
@@ -25,7 +25,7 @@ export function joinWin(dir: string, name: string): string {
  * dedupe e limpeza). Nada aqui é editado pelo app depois de gravado.
  * O comando Rust `salvar_conversa_chatgpt` usa a mesma raiz (src-tauri/src/chatgpt.rs).
  */
-export const CONVERSAS_ROOT = "D:\\915_CofreNotas-Conversas";
+export const CONVERSAS_ROOT = "C:\\CofreNotasMsgm\\Originais";
 
 /** Subpastas por fonte, dentro de CONVERSAS_ROOT. */
 export const CONVERSAS_SUBDIR = {
@@ -35,6 +35,26 @@ export const CONVERSAS_SUBDIR = {
 } as const;
 
 export type ConversaFonte = keyof typeof CONVERSAS_SUBDIR;
+
+/** Raízes antigas no disco D (até a v0.15.0) e para onde foram no C. */
+const RAIZES_MIGRADAS: ReadonlyArray<readonly [string, string]> = [
+  ["D:\\2606VAULT-ClaudeConversasOF-v2", DEFAULT_IMPORT_OUT_DIR],
+  ["D:\\915_CofreNotas-Conversas", CONVERSAS_ROOT],
+];
+
+/**
+ * Troca um caminho que estava numa raiz antiga do D pelo equivalente no C
+ * (o cofre lembrado do último uso). Qualquer outro caminho volta igual.
+ */
+export function migrarCaminhoAntigo(caminho: string): string {
+  const normal = caminho.replace(/\//g, "\\");
+  for (const [antiga, nova] of RAIZES_MIGRADAS) {
+    const resto = normal.slice(antiga.length);
+    const mesmaRaiz = normal.toLowerCase().startsWith(antiga.toLowerCase());
+    if (mesmaRaiz && (resto === "" || resto.startsWith("\\"))) return nova + resto;
+  }
+  return caminho;
+}
 
 /** Caminho absoluto da pasta de originais de uma fonte. */
 export function conversasDir(fonte: ConversaFonte): string {

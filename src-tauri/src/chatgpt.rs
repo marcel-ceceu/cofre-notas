@@ -9,7 +9,7 @@ const SCRIPT: &str = include_str!("../chatgpt_export.js");
 
 /// Pasta fixa das transcrições originais (ver docs/PASTAS-CONVERSAS.md).
 /// Espelha CONVERSAS_ROOT/CHATGPT_SUBDIR de src/lib/import/dest.ts.
-const CONVERSAS_ROOT: &str = r"D:\915_CofreNotas-Conversas";
+const CONVERSAS_ROOT: &str = r"C:\CofreNotasMsgm\Originais";
 const CHATGPT_SUBDIR: &str = "1_Chatgpt";
 
 /// Limite de tamanho do nome (o exportador gera ~85 caracteres).
@@ -65,7 +65,7 @@ fn pasta_chatgpt() -> PathBuf {
   PathBuf::from(CONVERSAS_ROOT).join(CHATGPT_SUBDIR)
 }
 
-/// Grava uma conversa exportada em `D:\915_CofreNotas-Conversas\1_Chatgpt\<nome>`.
+/// Grava uma conversa exportada em `C:\CofreNotasMsgm\Originais\1_Chatgpt\<nome>`.
 /// Chamado pelo exportador injetado na janela "chatgpt" (capabilities/chatgpt.json).
 /// Mesmo nome = mesma conversa na mesma versão → sobrescreve (reexportar não duplica).
 #[tauri::command]
@@ -170,7 +170,7 @@ mod tests {
   fn pasta_fica_sob_a_raiz_fixa() {
     assert_eq!(
       pasta_chatgpt(),
-      PathBuf::from(r"D:\915_CofreNotas-Conversas\1_Chatgpt")
+      PathBuf::from(r"C:\CofreNotasMsgm\Originais\1_Chatgpt")
     );
   }
 }

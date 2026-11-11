@@ -1,7 +1,12 @@
 import { lazy, Suspense, useState } from "react";
 import { isDesktopShell, openChatGptTeste } from "../lib/runtime/shell";
 import { conversasDir } from "../lib/import/dest";
+import { copyToClipboard } from "../lib/copyResults";
+import { carregarScriptExportador } from "../lib/import/scriptExportador";
 import { VaultContextSummary } from "./VaultContextSummary";
+
+/** Tempo que o botão mostra "Script copiado". */
+const COPIADO_MS = 4000;
 
 const ImportCursorModal = lazy(() =>
   import("./ImportCursorModal").then((m) => ({ default: m.ImportCursorModal }))
@@ -19,7 +24,19 @@ export function ImportPanel({ onImported }: Props) {
   const [openCursor, setOpenCursor] = useState(false);
   const [openChatgpt, setOpenChatgpt] = useState(false);
   const [erroChatgpt, setErroChatgpt] = useState<string | null>(null);
+  const [copiado, setCopiado] = useState(false);
   const desktop = isDesktopShell();
+
+  const copiarScript = async () => {
+    setErroChatgpt(null);
+    try {
+      await copyToClipboard(await carregarScriptExportador());
+      setCopiado(true);
+      window.setTimeout(() => setCopiado(false), COPIADO_MS);
+    } catch (e) {
+      setErroChatgpt(`Não deu para copiar o script: ${String(e)}`);
+    }
+  };
 
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
@@ -38,8 +55,10 @@ export function ImportPanel({ onImported }: Props) {
           <p className="text-[12px] font-medium text-[var(--ink)]">ChatGPT</p>
           <ol className="list-decimal space-y-1 pl-4 text-[11.5px] leading-snug text-[var(--ink-muted)]">
             <li>
-              <strong className="font-medium text-[var(--ink)]">Baixar</strong> — script no
-              Console do Chrome (ou a janela do app) grava em{" "}
+              <strong className="font-medium text-[var(--ink)]">Baixar</strong> — copie o
+              script abaixo, abra o chatgpt.com no Chrome, <strong>F12</strong> → aba{" "}
+              <strong>Console</strong>, <strong>Ctrl+V</strong> e <strong>Enter</strong> (na 1ª
+              vez o Chrome pede para digitar <code>allow pasting</code>). No popup, escolha a pasta{" "}
               <code className="break-all">{conversasDir("chatgpt")}</code>.
             </li>
             <li>
@@ -51,6 +70,14 @@ export function ImportPanel({ onImported }: Props) {
               as cortesias e grava em <code>ChatGPT\</code> dentro do cofre.
             </li>
           </ol>
+          <button
+            type="button"
+            onClick={copiarScript}
+            className="tb-btn tb-btn--primary w-full justify-center"
+            title="Copia o exportador do ChatGPT para colar no Console do Chrome"
+          >
+            {copiado ? "Script copiado — cole no Console do chatgpt.com" : "Copiar script do exportador"}
+          </button>
           <button
             type="button"
             onClick={() => setOpenChatgpt(true)}

@@ -7,7 +7,7 @@ consolidação e sincronização para o Supabase.
 ## Abrir o app
 
 **Uso normal:** rode o instalador
-`src-tauri/target/release/bundle/nsis/Cofre de Notas_0.15.0_x64-setup.exe`,
+`src-tauri/target/release/bundle/nsis/Cofre de Notas_0.16.0_x64-setup.exe`,
 ou abra direto o executável `src-tauri/target/release/app.exe` (o nome vem do
 pacote Cargo; o instalador é que cria o atalho "Cofre de Notas"). Não precisa
 de terminal aberto.
@@ -119,7 +119,7 @@ As transcrições originais de cada fonte ficam em um local fixo, uma subpasta p
 fonte, antes de conferir duplicatas e limpar:
 
 ```
-D:\915_CofreNotas-Conversas\
+C:\CofreNotasMsgm\Originais\
   1_Chatgpt\     o exportador do ChatGPT (Chrome ou janela interna do Cofre) grava aqui;
                  Importar → "Levar conversas do ChatGPT para o cofre" confere e grava em ChatGPT\ do cofre
   2_ClaudeWeb\   salve aqui os .zip do export do Claude.ai (o import procura aqui primeiro)

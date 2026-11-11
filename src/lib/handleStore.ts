@@ -1,5 +1,6 @@
 import type { VaultHandle } from "./fileSystem";
 import { isTauriRuntime } from "./fileSystem.tauri";
+import { migrarCaminhoAntigo } from "./import/dest";
 
 const DB_NAME = "cofre-notas";
 const STORE = "kv";
@@ -33,8 +34,19 @@ export async function loadLastVaultHandle(): Promise<VaultHandle | null> {
   return new Promise((resolve, reject) => {
     const tx = db.transaction(STORE, "readonly");
     const req = tx.objectStore(STORE).get(KEY);
-    req.onsuccess = () =>
-      resolve((req.result as VaultHandle | undefined) ?? null);
+    req.onsuccess = () => {
+      const h = (req.result as VaultHandle | undefined) ?? null;
+      // Cofre lembrado no disco D (até a v0.15.0) passa a abrir no C.
+      const t = h as { kind?: string; path?: string } | null;
+      if (t?.kind === "tauri" && typeof t.path === "string") {
+        const path = migrarCaminhoAntigo(t.path);
+        if (path !== t.path) {
+          resolve({ ...t, path } as VaultHandle);
+          return;
+        }
+      }
+      resolve(h);
+    };
     req.onerror = () => reject(req.error);
   });
 }
